@@ -23,3 +23,9 @@
 
 ## Testes
 - [x] 27 testes Vitest passando (parseNumericResult, parseReferenceRange, classifyExam, getClinicalInterpretation, processLabJson)
+
+## Correções (bug report — laudo Marcondes)
+- [x] Corrigir `parseReferenceRange` para extrair faixa correta de intervalos multi-sexo/multi-faixa etária
+- [x] Ampliar base de conhecimento clínico: PCR ultra-sensível, Estradiol, Testosterona Total/Livre/Biodisponível, SHBG
+- [x] Melhorar `classifyExam` para usar o campo `status` do JSON quando o intervalo não for parseável
+- [x] Atualizar testes unitários para cobrir os novos casos (39 testes passando)
