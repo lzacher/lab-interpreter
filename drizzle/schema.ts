@@ -1,17 +1,15 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import {
+  int,
+  mysqlEnum,
+  mysqlTable,
+  text,
+  timestamp,
+  varchar,
+  json,
+} from "drizzle-orm/mysql-core";
 
-/**
- * Core user table backing auth flow.
- * Extend this file with additional tables as your product grows.
- * Columns use camelCase to match both database fields and generated types.
- */
 export const users = mysqlTable("users", {
-  /**
-   * Surrogate primary key. Auto-incremented numeric value managed by the database.
-   * Use this for relations between tables.
-   */
   id: int("id").autoincrement().primaryKey(),
-  /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
@@ -25,4 +23,41 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// TODO: Add your tables here
+/** Uma sessão de exame corresponde a um arquivo JSON carregado pelo usuário */
+export const examSessions = mysqlTable("exam_sessions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  patientName: varchar("patientName", { length: 255 }),
+  patientDob: varchar("patientDob", { length: 20 }),
+  patientSex: varchar("patientSex", { length: 30 }),
+  collectionDate: varchar("collectionDate", { length: 20 }),
+  emissionDate: varchar("emissionDate", { length: 20 }),
+  requestingDoctor: varchar("requestingDoctor", { length: 255 }),
+  responsibleDoctor: varchar("responsibleDoctor", { length: 255 }),
+  laboratory: varchar("laboratory", { length: 255 }),
+  attendanceNumber: varchar("attendanceNumber", { length: 100 }),
+  material: text("material"),
+  method: text("method"),
+  observations: text("observations"),
+  rawJson: json("rawJson"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ExamSession = typeof examSessions.$inferSelect;
+export type InsertExamSession = typeof examSessions.$inferInsert;
+
+/** Cada exame individual dentro de uma sessão */
+export const exams = mysqlTable("exams", {
+  id: int("id").autoincrement().primaryKey(),
+  sessionId: int("sessionId").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  result: varchar("result", { length: 100 }),
+  unit: varchar("unit", { length: 50 }),
+  referenceRange: varchar("referenceRange", { length: 255 }),
+  status: varchar("status", { length: 30 }),
+  interpretation: text("interpretation"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Exam = typeof exams.$inferSelect;
+export type InsertExam = typeof exams.$inferInsert;
