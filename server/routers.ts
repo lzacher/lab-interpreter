@@ -11,8 +11,40 @@ import {
   getSessionById,
   getSessionsByUserId,
 } from "./db";
-import { processLabJson, classifyExam, parseNumericResult, parseReferenceRange, getClinicalInterpretation } from "./labProcessor";
-import type { ProcessedExam, ExamClassification } from "../shared/labTypes";
+
+// ─── Helpers de parsing do JSON ───────────────────────────────────────────────
+
+function parseLabJson(raw: any) {
+  const campos = raw?.campos ?? {};
+
+  const sessionData = {
+    patientName: campos.paciente_nome ?? null,
+    patientDob: campos.paciente_data_nascimento ?? null,
+    patientSex: campos.paciente_sexo ?? null,
+    collectionDate: campos.data_realizacao ?? null,
+    emissionDate: campos.data_emissao ?? null,
+    requestingDoctor: campos.medico_solicitante ?? null,
+    responsibleDoctor: campos.medico_responsavel ?? null,
+    laboratory: campos.laboratorio_clinica ?? null,
+    attendanceNumber: campos.numero_atendimento ?? null,
+    material: campos.material ?? null,
+    method: campos.metodo ?? null,
+    observations: campos.observacoes ?? null,
+    rawJson: raw,
+  };
+
+  const exams = (campos.exames ?? []).map((e: any) => ({
+    name: String(e.nome_exame ?? ""),
+    result: String(e.resultado ?? ""),
+    unit: String(e.unidade ?? ""),
+    referenceRange: String(e.valor_referencia ?? ""),
+    status: String(e.status ?? ""),
+  }));
+
+  return { sessionData, exams };
+}
+
+// ─── Router ───────────────────────────────────────────────────────────────────
 
 const labRouter = router({
   /** Faz upload de um JSON de exames, persiste e retorna o ID da sessão */
@@ -30,7 +62,7 @@ const labRouter = router({
         throw new Error("Estrutura do JSON inválida. O arquivo deve conter 'campos.exames'.");
       }
 
-      const { sessionData, processedExams } = processLabJson(payload);
+      const { sessionData, exams } = parseLabJson(payload);
 
       const sessionId = await createExamSession({
         ...sessionData,
@@ -38,14 +70,13 @@ const labRouter = router({
       });
 
       await createExams(
-        processedExams.map((e) => ({
+        exams.map((e: any) => ({
           sessionId,
           name: e.name,
           result: e.result,
           unit: e.unit,
           referenceRange: e.referenceRange,
           status: e.status,
-          interpretation: e.interpretation,
         }))
       );
 
@@ -65,7 +96,7 @@ const labRouter = router({
     }));
   }),
 
-  /** Retorna sessão completa com exames processados */
+  /** Retorna sessão completa com exames */
   getSession: protectedProcedure
     .input(z.object({ sessionId: z.number() }))
     .query(async ({ ctx, input }) => {
@@ -76,26 +107,15 @@ const labRouter = router({
 
       const rawExams = await getExamsBySessionId(input.sessionId);
 
-      const processedExams: ProcessedExam[] = rawExams.map((e) => {
-        const numericResult = parseNumericResult(e.result ?? "");
-        const { min: refMin, max: refMax } = parseReferenceRange(e.referenceRange ?? "");
-        const classification = classifyExam(e.status ?? "", numericResult, refMin, refMax);
-
-        return {
-          id: e.id,
-          sessionId: e.sessionId,
-          name: e.name,
-          result: e.result ?? "",
-          unit: e.unit ?? "",
-          referenceRange: e.referenceRange ?? "",
-          status: e.status ?? "",
-          classification,
-          numericResult,
-          refMin,
-          refMax,
-          interpretation: e.interpretation,
-        };
-      });
+      const processedExams = rawExams.map((e) => ({
+        id: e.id,
+        sessionId: e.sessionId,
+        name: e.name,
+        result: e.result ?? "",
+        unit: e.unit ?? "",
+        referenceRange: e.referenceRange ?? "",
+        status: e.status ?? "",
+      }));
 
       return {
         id: session.id,

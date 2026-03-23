@@ -97,8 +97,4 @@ export async function deleteSession(sessionId: number, userId: number): Promise<
   return true;
 }
 
-export async function updateExamInterpretation(examId: number, interpretation: string): Promise<void> {
-  const db = await getDb();
-  if (!db) return;
-  await db.update(exams).set({ interpretation }).where(eq(exams.id, examId));
-}
+

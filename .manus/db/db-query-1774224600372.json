@@ -1,0 +1,9 @@
+{
+  "query": "DELETE FROM exams WHERE sessionId IN (SELECT id FROM exam_sessions);\nDELETE FROM exam_sessions;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sWoaWTPntxGbWh.2ac340c65fe1 --database SYJ8HnCW4cDbQBB8KzYoKX --execute DELETE FROM exams WHERE sessionId IN (SELECT id FROM exam_sessions);\nDELETE FROM exam_sessions;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 101
+}

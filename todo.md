@@ -36,3 +36,11 @@
 - [x] Remover gráficos de barras e badges de status da página de análise
 - [x] Manter resumo executivo simplificado (total de exames)
 - [x] 39 testes passando
+
+## Bug crítico (laudo Marcondes — exibição CSV bruto)
+- [x] Causa raiz: campo `referenceRange` era varchar(255) — truncava textos longos corrompendo o dado
+- [x] Migração aplicada: `name` e `referenceRange` agora são TEXT no banco
+- [x] Coluna `interpretation` removida do schema, do backend e do frontend
+- [x] labProcessor.ts removido — sem classificação automática
+- [x] Tabela exibe: nome, resultado, unidade, valor de referência
+- [x] 20 testes passando

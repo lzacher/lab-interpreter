@@ -137,8 +137,7 @@ export default function Analysis() {
                 <TableHead className="w-[30%] font-semibold text-foreground">Exame</TableHead>
                 <TableHead className="w-[12%] font-semibold text-foreground text-right">Resultado</TableHead>
                 <TableHead className="w-[8%] font-semibold text-foreground">Unidade</TableHead>
-                <TableHead className="w-[25%] font-semibold text-foreground">Valor de Referência</TableHead>
-                <TableHead className="w-[25%] font-semibold text-foreground">Interpretação Clínica</TableHead>
+                <TableHead className="w-[35%] font-semibold text-foreground">Valor de Referência</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -152,8 +151,7 @@ export default function Analysis() {
                 filtered.map((exam: any) => {
                   const isExpanded = expandedId === exam.id;
                   const hasLongRef = (exam.referenceRange ?? "").length > 60;
-                  const hasLongInterp = (exam.interpretation ?? "").length > 80;
-                  const needsExpand = hasLongRef || hasLongInterp;
+                  const needsExpand = hasLongRef;
 
                   return (
                     <TableRow
@@ -198,18 +196,7 @@ export default function Analysis() {
                         )}
                       </TableCell>
 
-                      {/* Interpretação Clínica */}
-                      <TableCell className="text-xs text-foreground py-3 leading-relaxed">
-                        {exam.interpretation ? (
-                          isExpanded || !hasLongInterp ? (
-                            <span>{exam.interpretation}</span>
-                          ) : (
-                            <span className="line-clamp-3">{exam.interpretation}</span>
-                          )
-                        ) : (
-                          <span className="text-muted-foreground/50">—</span>
-                        )}
-                      </TableCell>
+
                     </TableRow>
                   );
                 })

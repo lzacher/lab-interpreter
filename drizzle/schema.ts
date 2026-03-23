@@ -50,12 +50,11 @@ export type InsertExamSession = typeof examSessions.$inferInsert;
 export const exams = mysqlTable("exams", {
   id: int("id").autoincrement().primaryKey(),
   sessionId: int("sessionId").notNull(),
-  name: varchar("name", { length: 255 }).notNull(),
+  name: text("name").notNull(),
   result: varchar("result", { length: 100 }),
   unit: varchar("unit", { length: 50 }),
-  referenceRange: varchar("referenceRange", { length: 255 }),
+  referenceRange: text("referenceRange"),
   status: varchar("status", { length: 30 }),
-  interpretation: text("interpretation"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
