@@ -52,3 +52,10 @@
 - [x] PDF gerado com cabeçalho azul, dados do paciente em 2 colunas, tabela de resultados e rodapé com página
 - [x] Nome do arquivo: paciente_data.pdf
 - [x] 20 testes passando
+
+## Destaque visual de resultados alterados
+- [x] Colorir linhas da tabela: amber para elevado, azul para baixo, vermelho para alterado
+- [x] Badge de status com ícone na coluna Resultado
+- [x] Destaque de cores refletido no PDF via didParseCell
+- [x] Legenda de cores exibida acima da tabela
+- [x] 20 testes passando

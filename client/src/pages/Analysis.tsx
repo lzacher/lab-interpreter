@@ -21,7 +21,36 @@ import {
   ChevronUp,
   Loader2,
   Download,
+  AlertTriangle,
+  TrendingUp,
+  TrendingDown,
 } from "lucide-react";
+
+// Classifica o status do exame para destaque visual
+function classifyStatus(status: string): "alterado" | "elevado" | "baixo" | "normal" {
+  const s = (status ?? "").toLowerCase().trim();
+  if (s === "elevado" || s === "alto" || s === "aumentado" || s === "acima") return "elevado";
+  if (s === "baixo" || s === "reduzido" || s === "diminuido" || s === "abaixo") return "baixo";
+  if (s === "alterado" || s === "anormal" || s === "critico" || s === "crítico") return "alterado";
+  return "normal";
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const cls = classifyStatus(status);
+  if (cls === "normal") return null;
+  const config = {
+    elevado: { label: "Elevado", icon: TrendingUp, className: "bg-amber-50 text-amber-700 border border-amber-200" },
+    baixo:   { label: "Baixo",   icon: TrendingDown, className: "bg-blue-50 text-blue-700 border border-blue-200" },
+    alterado:{ label: "Alterado",icon: AlertTriangle, className: "bg-red-50 text-red-700 border border-red-200" },
+  }[cls];
+  const Icon = config.icon;
+  return (
+    <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${config.className}`}>
+      <Icon className="h-2.5 w-2.5" />
+      {config.label}
+    </span>
+  );
+}
 
 export default function Analysis() {
   const params = useParams<{ sessionId: string }>();
@@ -141,6 +170,23 @@ export default function Analysis() {
           1: { cellWidth: 20, halign: "right" },
           2: { cellWidth: 18 },
           3: { cellWidth: "auto" },
+        },
+        // Destaque de linhas alteradas no PDF
+        didParseCell: (data: any) => {
+          if (data.section === "body") {
+            const exam = allExams[data.row.index];
+            const sc = classifyStatus(exam?.status ?? "");
+            if (sc === "elevado") {
+              data.cell.styles.fillColor = [255, 251, 235]; // amber-50
+              data.cell.styles.textColor = [120, 80, 0];
+            } else if (sc === "baixo") {
+              data.cell.styles.fillColor = [239, 246, 255]; // blue-50
+              data.cell.styles.textColor = [30, 64, 175];
+            } else if (sc === "alterado") {
+              data.cell.styles.fillColor = [255, 241, 242]; // red-50
+              data.cell.styles.textColor = [185, 28, 28];
+            }
+          }
         },
       });
 
@@ -265,13 +311,21 @@ export default function Analysis() {
         </div>
 
         {/* Summary */}
-        <div className="flex items-center justify-between">
-          <h3 className="font-semibold text-foreground">
-            Resultados dos Exames
-            <span className="ml-2 text-sm font-normal text-muted-foreground">
-              ({session.exams.length} exame{session.exams.length !== 1 ? "s" : ""})
-            </span>
-          </h3>
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            <h3 className="font-semibold text-foreground">
+              Resultados dos Exames
+              <span className="ml-2 text-sm font-normal text-muted-foreground">
+                ({session.exams.length} exame{session.exams.length !== 1 ? "s" : ""})
+              </span>
+            </h3>
+            {/* Legenda */}
+            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+              <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full font-medium"><TrendingUp className="h-2.5 w-2.5" /> Elevado</span>
+              <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded-full font-medium"><TrendingDown className="h-2.5 w-2.5" /> Baixo</span>
+              <span className="inline-flex items-center gap-1 bg-red-50 text-red-700 border border-red-200 px-1.5 py-0.5 rounded-full font-medium"><AlertTriangle className="h-2.5 w-2.5" /> Alterado</span>
+            </div>
+          </div>
           <div className="relative w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -306,11 +360,17 @@ export default function Analysis() {
                   const isExpanded = expandedId === exam.id;
                   const hasLongRef = (exam.referenceRange ?? "").length > 60;
                   const needsExpand = hasLongRef;
+                  const statusCls = classifyStatus(exam.status ?? "");
+                  const rowBg =
+                    statusCls === "elevado" ? "bg-amber-50/60 hover:bg-amber-50" :
+                    statusCls === "baixo"   ? "bg-blue-50/60 hover:bg-blue-50" :
+                    statusCls === "alterado"? "bg-red-50/60 hover:bg-red-50" :
+                    needsExpand ? "cursor-pointer hover:bg-muted/30" : "";
 
                   return (
                     <TableRow
                       key={exam.id}
-                      className={needsExpand ? "cursor-pointer hover:bg-muted/30 align-top" : "align-top"}
+                      className={`align-top transition-colors ${rowBg} ${needsExpand ? "cursor-pointer" : ""}`}
                       onClick={needsExpand ? () => setExpandedId(isExpanded ? null : exam.id) : undefined}
                     >
                       {/* Nome */}
@@ -328,8 +388,11 @@ export default function Analysis() {
                       </TableCell>
 
                       {/* Resultado */}
-                      <TableCell className="text-right font-mono font-semibold text-sm text-foreground py-3">
-                        {exam.result ?? "—"}
+                      <TableCell className="text-right py-3">
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="font-mono font-semibold text-sm text-foreground">{exam.result ?? "—"}</span>
+                          <StatusBadge status={exam.status ?? ""} />
+                        </div>
                       </TableCell>
 
                       {/* Unidade */}
