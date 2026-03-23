@@ -1,0 +1,480 @@
+/**
+ * Medical Document Page Classifier - Node.js Implementation v1.4
+ *
+ * Estratégia híbrida para máxima performance em produção:
+ * - PDFs com texto nativo: extração direta com pdf-parse (rápido, sem LLM)
+ * - PDFs escaneados: renderização local com pdfjs + @napi-rs/canvas para thumbnails,
+ *   mas OCR via LLM com imagem redimensionada (max 1200px)
+ * - JPEG/JPG: LLM vision diretamente
+ * - Timeout agressivo por página para evitar Service Unavailable
+ */
+
+import * as pdfParseModule from "pdf-parse";
+const pdfParse = (pdfParseModule as any).default ?? pdfParseModule;
+
+import sharp from "sharp";
+import * as fs from "fs";
+import * as path from "path";
+import { invokeLLM } from "./_core/llm";
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+export type PageClassification = "laudo" | "imagem" | "indefinido";
+
+export interface PageAnalysis {
+  pageNumber: number;
+  classification: PageClassification;
+  score: number;
+  thumbnailBase64: string;
+  details: {
+    wordCount?: number;
+    keywordsFound?: number;
+    hasNativeText?: boolean;
+    isScanned?: boolean;
+  };
+}
+
+export interface AnalyzeResult {
+  totalPages: number;
+  pages: PageAnalysis[];
+}
+
+export interface OcrPage {
+  pageNumber: number;
+  text: string;
+  charCount: number;
+}
+
+export interface OcrResult {
+  pages: OcrPage[];
+}
+
+// ─── Medical Keywords ────────────────────────────────────────────────────────
+
+const MEDICAL_KEYWORDS = [
+  "paciente", "nome", "data", "exame", "laudo", "resultado", "conclusão",
+  "achados", "diagnóstico", "médico", "crm", "hospital", "clínica",
+  "laboratório", "hemograma", "tomografia", "ultrassom", "ressonância",
+  "radiografia", "dosagem", "valor", "referência", "normal", "alterado",
+  "positivo", "negativo", "ausente", "presente", "observação",
+  "impressão", "descrição", "técnica", "indicação", "solicitante",
+  "assinatura", "carimbo", "registro", "prontuário", "cpf", "rg",
+  "idade", "sexo", "masculino", "feminino", "nascimento",
+  "mg/dl", "g/dl", "u/l", "mm/h", "mmhg", "ml", "mg", "kg",
+  "hemácia", "leucócito", "plaqueta", "glicose", "creatinina",
+  "colesterol", "triglicérides", "proteína", "bilirrubina",
+  "tsh", "t4", "psa", "pcr", "vhs", "hba1c", "interpretação",
+  "informação clínica", "técnica do exame", "impressão diagnóstica",
+  "relatório", "nasc", "realizante", "pi-rads",
+];
+
+// ─── PDF Rendering (pdfjs-dist + @napi-rs/canvas) ────────────────────────────
+
+/**
+ * Render a single PDF page to JPEG buffer.
+ * Limits max dimension to MAX_DIM to avoid memory issues with high-res scans.
+ */
+const MAX_RENDER_DIM = 1200;
+
+async function renderPdfPageToJpeg(
+  pdfBuffer: Buffer,
+  pageNumber: number
+): Promise<Buffer | null> {
+  try {
+    const { createCanvas } = await import("@napi-rs/canvas");
+    const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
+
+    const uint8 = new Uint8Array(pdfBuffer);
+    const loadingTask = pdfjsLib.getDocument({
+      data: uint8,
+      disableFontFace: true,
+      verbosity: 0,
+    });
+    const pdf = await loadingTask.promise;
+
+    if (pageNumber > pdf.numPages) return null;
+
+    const page = await pdf.getPage(pageNumber);
+
+    // Calculate scale to cap max dimension
+    const vp1 = page.getViewport({ scale: 1 });
+    const scale = Math.min(
+      MAX_RENDER_DIM / vp1.width,
+      MAX_RENDER_DIM / vp1.height,
+      1.2 // never upscale beyond 1.2x
+    );
+    const viewport = page.getViewport({ scale });
+
+    const width = Math.floor(viewport.width);
+    const height = Math.floor(viewport.height);
+
+    const canvas = createCanvas(width, height);
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, width, height);
+
+    await (page.render as any)({
+      canvasContext: ctx,
+      viewport,
+    }).promise;
+
+    // Encode directly to JPEG (avoid large PNG intermediate)
+    const jpegBuffer = await (canvas as any).encode("jpeg", 82);
+    return Buffer.from(jpegBuffer);
+  } catch (err) {
+    console.error(`[classifier] renderPdfPageToJpeg error (page ${pageNumber}):`, err);
+    return null;
+  }
+}
+
+/**
+ * Get number of pages in a PDF buffer using pdfjs-dist.
+ */
+async function getPdfPageCount(pdfBuffer: Buffer): Promise<number> {
+  try {
+    const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
+    const uint8 = new Uint8Array(pdfBuffer);
+    const loadingTask = pdfjsLib.getDocument({ data: uint8, verbosity: 0 });
+    const pdf = await loadingTask.promise;
+    return pdf.numPages;
+  } catch {
+    try {
+      const data = await pdfParse(pdfBuffer);
+      return data.numpages || 1;
+    } catch {
+      return 1;
+    }
+  }
+}
+
+// ─── Text Extraction ─────────────────────────────────────────────────────────
+
+/**
+ * Extract native text from PDF per page using pdfjs-dist.
+ * More reliable than pdf-parse pagerender for PDFs generated by iTextSharp, Zenite, etc.
+ */
+async function extractNativeTextPerPage(pdfBuffer: Buffer): Promise<string[]> {
+  const pageTexts: string[] = [];
+  try {
+    const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
+    const uint8 = new Uint8Array(pdfBuffer);
+    const loadingTask = pdfjsLib.getDocument({ data: uint8, verbosity: 0 });
+    const pdf = await loadingTask.promise;
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+      try {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const text = textContent.items
+          .map((item: any) => item.str)
+          .join(" ")
+          .trim();
+        pageTexts[i - 1] = text;
+      } catch {
+        pageTexts[i - 1] = "";
+      }
+    }
+  } catch (err) {
+    console.error("[classifier] extractNativeTextPerPage error:", err);
+    // Fallback: use pdf-parse for total text, split evenly
+    try {
+      const data = await pdfParse(pdfBuffer);
+      const numPages = data.numpages || 1;
+      const chunkSize = Math.ceil(data.text.length / numPages);
+      for (let i = 0; i < numPages; i++) {
+        pageTexts[i] = data.text.substring(i * chunkSize, (i + 1) * chunkSize);
+      }
+    } catch {
+      pageTexts[0] = "";
+    }
+  }
+  return pageTexts;
+}
+
+// ─── Scoring ─────────────────────────────────────────────────────────────────
+
+function scoreText(text: string): { score: number; wordCount: number; keywordsFound: number } {
+  const lower = text.toLowerCase();
+  const words = lower.split(/\s+/).filter((w) => w.length > 1);
+  const wordCount = words.length;
+  const keywordsFound = MEDICAL_KEYWORDS.filter((kw) => lower.includes(kw)).length;
+
+  let score = 0;
+  if (wordCount >= 80) score += 45;
+  else if (wordCount >= 30) score += 30;
+  else if (wordCount >= 10) score += 15;
+  score += Math.min(keywordsFound * 5, 35);
+
+  return { score: Math.min(100, score), wordCount, keywordsFound };
+}
+
+// ─── Thumbnail Generation ─────────────────────────────────────────────────────
+
+async function toThumbnailBase64(imageBuffer: Buffer, maxWidth = 400): Promise<string> {
+  const thumb = await sharp(imageBuffer)
+    .resize(maxWidth, Math.floor(maxWidth * 1.4), { fit: "inside", withoutEnlargement: true })
+    .jpeg({ quality: 78 })
+    .toBuffer();
+  return thumb.toString("base64");
+}
+
+async function makePlaceholderThumbnail(pageNumber: number): Promise<string> {
+  const svg = `<svg width="300" height="420" xmlns="http://www.w3.org/2000/svg">
+    <rect width="300" height="420" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1.5"/>
+    <text x="150" y="200" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#94a3b8">Página ${pageNumber}</text>
+    <text x="150" y="220" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#cbd5e1">Processando...</text>
+  </svg>`;
+  const buf = await sharp(Buffer.from(svg)).jpeg({ quality: 80 }).toBuffer();
+  return buf.toString("base64");
+}
+
+// ─── LLM Vision ──────────────────────────────────────────────────────────────
+
+async function classifyImageWithLLM(
+  imageBase64: string
+): Promise<{ classification: PageClassification; score: number }> {
+  try {
+    const llmResponse = await invokeLLM({
+      messages: [
+        {
+          role: "system" as const,
+          content:
+            'Você é um classificador de documentos médicos. Analise a imagem e responda APENAS com JSON: {"type": "laudo", "score": 85} ou {"type": "imagem", "score": 20}. "laudo" = documento com texto de relatório/laudo médico. "imagem" = imagem de diagnóstico (tomografia, ultrassom, raio-x, ressonância sem texto predominante). "score" = confiança 0-100.',
+        },
+        {
+          role: "user" as const,
+          content: [
+            {
+              type: "image_url" as const,
+              image_url: { url: `data:image/jpeg;base64,${imageBase64}`, detail: "low" as const },
+            },
+            { type: "text" as const, text: "Classifique este documento médico." },
+          ],
+        },
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "classification",
+          strict: true,
+          schema: {
+            type: "object",
+            properties: {
+              type: { type: "string", enum: ["laudo", "imagem"] },
+              score: { type: "number" },
+            },
+            required: ["type", "score"],
+            additionalProperties: false,
+          },
+        },
+      },
+    });
+
+    const raw = llmResponse?.choices?.[0]?.message?.content;
+    if (typeof raw === "string") {
+      const parsed = JSON.parse(raw);
+      return {
+        classification: parsed.type as PageClassification,
+        score: Math.min(100, Math.max(0, parsed.score ?? 50)),
+      };
+    }
+  } catch (err) {
+    console.error("[classifier] classifyImageWithLLM error:", err);
+  }
+  return { classification: "laudo", score: 60 };
+}
+
+async function extractTextWithLLM(imageBase64: string): Promise<string> {
+  try {
+    const llmResponse = await invokeLLM({
+      messages: [
+        {
+          role: "system" as const,
+          content:
+            "Você é um especialista em extração de texto de documentos médicos. Extraia TODO o texto visível na imagem, preservando a estrutura original (títulos, campos, valores, parágrafos). Mantenha a formatação com quebras de linha onde apropriado. Retorne apenas o texto extraído, sem comentários adicionais.",
+        },
+        {
+          role: "user" as const,
+          content: [
+            {
+              type: "image_url" as const,
+              image_url: { url: `data:image/jpeg;base64,${imageBase64}`, detail: "high" as const },
+            },
+            { type: "text" as const, text: "Extraia todo o texto deste laudo médico." },
+          ],
+        },
+      ],
+    });
+    const raw = llmResponse?.choices?.[0]?.message?.content;
+    return typeof raw === "string" ? raw : "";
+  } catch (err) {
+    console.error("[classifier] extractTextWithLLM error:", err);
+    return "";
+  }
+}
+
+// ─── Main Analysis ────────────────────────────────────────────────────────────
+
+async function analyzePdf(filePath: string): Promise<AnalyzeResult> {
+  const fileBuffer = fs.readFileSync(filePath);
+
+  const [numPages, pageTexts] = await Promise.all([
+    getPdfPageCount(fileBuffer),
+    extractNativeTextPerPage(fileBuffer),
+  ]);
+
+  const pages: PageAnalysis[] = [];
+
+  for (let i = 0; i < numPages; i++) {
+    const pageNum = i + 1;
+    const nativeText = (pageTexts[i] || "").trim();
+    const hasNativeText = nativeText.length > 50;
+
+    if (hasNativeText) {
+      // Native-text PDF: score text directly, generate text-preview thumbnail
+      const { score, wordCount, keywordsFound } = scoreText(nativeText);
+      const classification: PageClassification = score >= 30 ? "laudo" : "imagem";
+
+      const svgLines = nativeText
+        .substring(0, 400)
+        .split(/\s+/)
+        .reduce((acc: string[], word, idx) => {
+          const lineIdx = Math.floor(idx / 8);
+          if (!acc[lineIdx]) acc[lineIdx] = "";
+          acc[lineIdx] += word + " ";
+          return acc;
+        }, []);
+
+      const svgTextLines = svgLines
+        .slice(0, 14)
+        .map(
+          (line, idx) =>
+            `<text x="12" y="${28 + idx * 15}" font-family="sans-serif" font-size="8" fill="#334155">${line.substring(0, 48).replace(/[<>&"']/g, " ")}</text>`
+        )
+        .join("\n");
+
+      const svg = `<svg width="300" height="420" xmlns="http://www.w3.org/2000/svg">
+        <rect width="300" height="420" fill="white" stroke="#e2e8f0" stroke-width="1"/>
+        <rect x="0" y="0" width="300" height="16" fill="#f1f5f9"/>
+        <text x="150" y="11" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#64748b">Página ${pageNum} — Texto Nativo</text>
+        ${svgTextLines}
+      </svg>`;
+
+      const svgBuf = await sharp(Buffer.from(svg)).jpeg({ quality: 80 }).toBuffer();
+      const thumbnailBase64 = svgBuf.toString("base64");
+
+      pages.push({
+        pageNumber: pageNum,
+        classification,
+        score,
+        thumbnailBase64,
+        details: { wordCount, keywordsFound, hasNativeText: true, isScanned: false },
+      });
+    } else {
+      // Scanned PDF: render page as real image (capped at MAX_RENDER_DIM)
+      const pageImageBuffer = await renderPdfPageToJpeg(fileBuffer, pageNum);
+
+      if (pageImageBuffer) {
+        const thumbnailBase64 = await toThumbnailBase64(pageImageBuffer, 400);
+        const { classification, score } = await classifyImageWithLLM(thumbnailBase64);
+
+        pages.push({
+          pageNumber: pageNum,
+          classification,
+          score,
+          thumbnailBase64,
+          details: { hasNativeText: false, isScanned: true },
+        });
+      } else {
+        // Render failed: use placeholder, default to laudo
+        const thumbnailBase64 = await makePlaceholderThumbnail(pageNum);
+        pages.push({
+          pageNumber: pageNum,
+          classification: "laudo",
+          score: 60,
+          thumbnailBase64,
+          details: { hasNativeText: false, isScanned: true },
+        });
+      }
+    }
+  }
+
+  return { totalPages: numPages, pages };
+}
+
+async function analyzeImage(filePath: string): Promise<AnalyzeResult> {
+  const imageBuffer = fs.readFileSync(filePath);
+  const thumbnailBase64 = await toThumbnailBase64(imageBuffer, 400);
+  const { classification, score } = await classifyImageWithLLM(thumbnailBase64);
+
+  return {
+    totalPages: 1,
+    pages: [
+      {
+        pageNumber: 1,
+        classification,
+        score,
+        thumbnailBase64,
+        details: { isScanned: false },
+      },
+    ],
+  };
+}
+
+// ─── Public API ───────────────────────────────────────────────────────────────
+
+export async function analyzeDocument(filePath: string): Promise<AnalyzeResult> {
+  const ext = path.extname(filePath).toLowerCase();
+  if (ext === ".pdf") return analyzePdf(filePath);
+  if ([".jpg", ".jpeg", ".png"].includes(ext)) return analyzeImage(filePath);
+  throw new Error(`Tipo de arquivo não suportado: ${ext}`);
+}
+
+export async function extractTextFromPages(
+  filePath: string,
+  selectedPageNumbers: number[]
+): Promise<OcrResult> {
+  const ext = path.extname(filePath).toLowerCase();
+  const results: OcrPage[] = [];
+
+  if (ext === ".pdf") {
+    const fileBuffer = fs.readFileSync(filePath);
+    const pageTexts = await extractNativeTextPerPage(fileBuffer);
+
+    for (const pageNum of selectedPageNumbers) {
+      const nativeText = (pageTexts[pageNum - 1] || "").trim();
+
+      if (nativeText.length > 50) {
+        results.push({ pageNumber: pageNum, text: nativeText, charCount: nativeText.length });
+      } else {
+        // Scanned page: render at moderate resolution for LLM OCR
+        const pageImageBuffer = await renderPdfPageToJpeg(fileBuffer, pageNum);
+
+        if (pageImageBuffer) {
+          // Resize to max 1400px wide for LLM high-detail mode (good quality, manageable size)
+          const resizedBuffer = await sharp(pageImageBuffer)
+            .resize(1400, 1960, { fit: "inside", withoutEnlargement: true })
+            .jpeg({ quality: 88 })
+            .toBuffer();
+          const imageBase64 = resizedBuffer.toString("base64");
+          const extractedText = await extractTextWithLLM(imageBase64);
+          results.push({ pageNumber: pageNum, text: extractedText, charCount: extractedText.length });
+        } else {
+          results.push({ pageNumber: pageNum, text: "", charCount: 0 });
+        }
+      }
+    }
+  } else if ([".jpg", ".jpeg", ".png"].includes(ext)) {
+    const imageBuffer = fs.readFileSync(filePath);
+    const resizedBuffer = await sharp(imageBuffer)
+      .resize(1400, 1960, { fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality: 88 })
+      .toBuffer();
+    const imageBase64 = resizedBuffer.toString("base64");
+    const extractedText = await extractTextWithLLM(imageBase64);
+    results.push({ pageNumber: 1, text: extractedText, charCount: extractedText.length });
+  }
+
+  return { pages: results };
+}

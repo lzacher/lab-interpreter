@@ -59,3 +59,20 @@
 - [x] Destaque de cores refletido no PDF via didParseCell
 - [x] Legenda de cores exibida acima da tabela
 - [x] 20 testes passando
+
+## MedSuite — Integração Unificada
+- [ ] Instalar dependências do classificador (pdf-parse, pdfjs-dist, sharp, @napi-rs/canvas)
+- [ ] Schema unificado: documents, document_pages, imaging_reports (+ manter exam_sessions/exams)
+- [ ] Migrar classifier.ts do Medical Document Classifier
+- [ ] Criar jsonExtractor.ts: extração de JSON estruturado via LLM (lab e imagem)
+- [ ] Criar routers/documents.ts: upload, analyze, process com roteamento por tipo
+- [ ] Criar routers/imaging.ts: laudos de imagem (eco/TC/RM)
+- [ ] Criar routers/history.ts: histórico unificado
+- [ ] Página Home: upload drag-and-drop de PDF/JPG/JPEG
+- [ ] Página Review: thumbnails + classificação por página
+- [ ] Página Processing: status de progresso OCR
+- [ ] Página LabResult: tabela com destaque visual + exportar PDF
+- [ ] Página ImagingResult: técnica, descrição, conclusão + exportar PDF
+- [ ] Página History: histórico unificado (lab + imagem)
+- [ ] Testes unitários backend
+- [ ] Checkpoint final + repositório GitHub medsuite

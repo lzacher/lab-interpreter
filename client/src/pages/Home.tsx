@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -6,48 +6,85 @@ import { getLoginUrl } from "@/const";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
-  FlaskConical,
+  FileText,
   Upload,
   History,
+  FlaskConical,
+  Scan,
   ChevronRight,
-  FileJson,
-  BarChart3,
-  Microscope,
   LogIn,
 } from "lucide-react";
 
-export default function Home() {
-  const { isAuthenticated, user } = useAuth();
-  const [, navigate] = useLocation();
-  const [dragging, setDragging] = useState(false);
-  const [fileName, setFileName] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+const ACCEPTED = ["application/pdf", "image/jpeg", "image/jpg"];
+const ACCEPTED_EXT = [".pdf", ".jpg", ".jpeg"];
 
-  const uploadMutation = trpc.lab.upload.useMutation({
+export default function Home() {
+  const [, navigate] = useLocation();
+  const { user, isAuthenticated, loading } = useAuth();
+  const [dragging, setDragging] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  const uploadMutation = trpc.documents.upload.useMutation({
     onSuccess: (data) => {
-      toast.success("Exames carregados com sucesso!");
+      navigate(`/review/${data.documentId}`);
+    },
+    onError: (err) => {
+      toast.error(err.message ?? "Erro ao enviar arquivo.");
+      setUploading(false);
+    },
+  });
+
+  const labUploadMutation = trpc.lab.upload.useMutation({
+    onSuccess: (data) => {
       navigate(`/analysis/${data.sessionId}`);
     },
     onError: (err) => {
-      toast.error(err.message || "Erro ao processar o arquivo.");
+      toast.error(err.message ?? "Erro ao processar JSON.");
+      setUploading(false);
     },
   });
 
   const handleFile = useCallback(
-    (file: File) => {
-      if (!file.name.endsWith(".json")) {
-        toast.error("Por favor, selecione um arquivo .json");
+    async (file: File) => {
+      if (!isAuthenticated) {
+        toast.error("Faça login para continuar.");
         return;
       }
-      setFileName(file.name);
+
+      const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+
+      // JSON direto → fluxo legado do LabInterpreter
+      if (ext === "json") {
+        setUploading(true);
+        const text = await file.text();
+        labUploadMutation.mutate({ jsonContent: text });
+        return;
+      }
+
+      // PDF / JPG / JPEG → fluxo MedSuite com OCR
+      if (!ACCEPTED.includes(file.type) && !ACCEPTED_EXT.includes(`.${ext}`)) {
+        toast.error("Formato não suportado. Use PDF, JPG, JPEG ou JSON.");
+        return;
+      }
+
+      if (file.size > 20 * 1024 * 1024) {
+        toast.error("Arquivo muito grande. Tamanho máximo: 20 MB.");
+        return;
+      }
+
+      setUploading(true);
       const reader = new FileReader();
       reader.onload = (e) => {
-        const content = e.target?.result as string;
-        uploadMutation.mutate({ jsonContent: content });
+        const base64 = (e.target?.result as string).split(",")[1];
+        uploadMutation.mutate({
+          fileName: file.name,
+          fileType: ext,
+          fileBase64: base64,
+        });
       };
-      reader.readAsText(file, "utf-8");
+      reader.readAsDataURL(file);
     },
-    [uploadMutation]
+    [isAuthenticated, uploadMutation, labUploadMutation]
   );
 
   const onDrop = useCallback(
@@ -60,169 +97,154 @@ export default function Home() {
     [handleFile]
   );
 
+  const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleFile(file);
+  };
+
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* Header */}
-      <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-10">
-        <div className="container flex items-center justify-between h-14">
-          <div className="flex items-center gap-2">
-            <FlaskConical className="h-5 w-5 text-primary" />
-            <span className="font-semibold text-foreground tracking-tight">LabInterpreter</span>
-          </div>
-          <div className="flex items-center gap-2">
-            {isAuthenticated ? (
-              <>
-                <span className="text-sm text-muted-foreground hidden sm:block">{user?.name}</span>
-                <Button variant="outline" size="sm" onClick={() => navigate("/dashboard")}>
-                  <History className="h-4 w-4 mr-1.5" />
-                  Histórico
-                </Button>
-              </>
-            ) : (
-              <Button size="sm" onClick={() => (window.location.href = getLoginUrl())}>
-                <LogIn className="h-4 w-4 mr-1.5" />
-                Entrar
-              </Button>
-            )}
-          </div>
+      <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <FlaskConical className="h-6 w-6 text-blue-700" />
+          <span className="text-lg font-semibold text-slate-800 tracking-tight">MedSuite</span>
+        </div>
+        <div className="flex items-center gap-3">
+          {isAuthenticated && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-slate-600 gap-1.5"
+              onClick={() => navigate("/history")}
+            >
+              <History className="h-4 w-4" />
+              Histórico
+            </Button>
+          )}
+          {!loading && !isAuthenticated && (
+            <Button
+              size="sm"
+              className="bg-blue-700 hover:bg-blue-800 text-white gap-1.5"
+              onClick={() => (window.location.href = getLoginUrl())}
+            >
+              <LogIn className="h-4 w-4" />
+              Entrar
+            </Button>
+          )}
+          {isAuthenticated && (
+            <span className="text-sm text-slate-500">{user?.name}</span>
+          )}
         </div>
       </header>
 
       {/* Hero */}
       <main className="flex-1 flex flex-col items-center justify-center px-4 py-16">
-        <div className="max-w-2xl w-full text-center space-y-4 mb-12">
-          <div className="inline-flex items-center gap-2 bg-primary/8 text-primary text-xs font-medium px-3 py-1.5 rounded-full border border-primary/20 mb-2">
-            <Microscope className="h-3.5 w-3.5" />
+        <div className="max-w-2xl w-full text-center space-y-4 mb-10">
+          <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 text-sm font-medium px-3 py-1.5 rounded-full border border-blue-100">
+            <Scan className="h-4 w-4" />
             Interpretação clínica assistida
           </div>
-          <h1 className="text-4xl font-bold tracking-tight text-foreground leading-tight">
-            Análise de Exames<br />
-            <span className="text-primary">Laboratoriais</span>
+          <h1 className="text-4xl font-bold text-slate-900 leading-tight">
+            Análise de Documentos
+            <br />
+            <span className="text-blue-700">Médicos</span>
           </h1>
-          <p className="text-muted-foreground text-lg leading-relaxed max-w-lg mx-auto">
-            Carregue o arquivo JSON do laudo laboratorial para visualizar resultados,
-            comparar com intervalos de referência e obter interpretações clínicas detalhadas.
+          <p className="text-slate-500 text-lg max-w-lg mx-auto">
+            Carregue laudos de laboratório ou exames de imagem em PDF, JPG ou JSON.
+            O sistema classifica, extrai e organiza os dados automaticamente.
           </p>
         </div>
 
         {/* Upload Area */}
-        {isAuthenticated ? (
-          <div className="w-full max-w-lg">
-            <div
-              className={`relative border-2 border-dashed rounded-xl p-10 text-center transition-all cursor-pointer
-                ${dragging
-                  ? "border-primary bg-primary/5 scale-[1.01]"
-                  : "border-border hover:border-primary/50 hover:bg-accent/30"
-                }
-                ${uploadMutation.isPending ? "opacity-60 pointer-events-none" : ""}
-              `}
-              onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-              onDragLeave={() => setDragging(false)}
-              onDrop={onDrop}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".json"
-                className="hidden"
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
-              />
-              <div className="flex flex-col items-center gap-3">
-                {uploadMutation.isPending ? (
-                  <>
-                    <div className="h-12 w-12 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-                    <p className="text-sm font-medium text-foreground">Processando exames…</p>
-                  </>
-                ) : (
-                  <>
-                    <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center">
-                      <FileJson className="h-7 w-7 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-foreground">
-                        {fileName ?? "Arraste o arquivo JSON aqui"}
-                      </p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        ou clique para selecionar
-                      </p>
-                    </div>
-                    <Button size="sm" className="mt-1" onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}>
-                      <Upload className="h-4 w-4 mr-1.5" />
-                      Selecionar arquivo
-                    </Button>
-                  </>
-                )}
-              </div>
+        <div
+          className={`w-full max-w-xl border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all duration-200 bg-white
+            ${dragging ? "border-blue-500 bg-blue-50" : "border-slate-200 hover:border-blue-400 hover:bg-slate-50"}
+            ${uploading ? "opacity-60 pointer-events-none" : ""}
+          `}
+          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={onDrop}
+          onClick={() => !uploading && document.getElementById("file-input")?.click()}
+        >
+          <input
+            id="file-input"
+            type="file"
+            className="hidden"
+            accept=".pdf,.jpg,.jpeg,.json"
+            onChange={onInputChange}
+          />
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center">
+              {uploading ? (
+                <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Upload className="h-8 w-8 text-blue-600" />
+              )}
             </div>
-
-            {/* Quick access */}
-            <div className="mt-4 flex justify-center">
-              <button
-                onClick={() => navigate("/dashboard")}
-                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors"
-              >
-                <History className="h-4 w-4" />
-                Ver histórico de análises
-                <ChevronRight className="h-3.5 w-3.5" />
-              </button>
+            <div>
+              <p className="font-semibold text-slate-700 text-base">
+                {uploading ? "Enviando arquivo..." : "Arraste o arquivo aqui"}
+              </p>
+              <p className="text-sm text-slate-400 mt-1">
+                ou clique para selecionar
+              </p>
             </div>
+            <div className="flex gap-2 flex-wrap justify-center">
+              {["PDF", "JPG", "JPEG", "JSON"].map((fmt) => (
+                <span
+                  key={fmt}
+                  className="text-xs font-medium bg-slate-100 text-slate-500 px-2.5 py-1 rounded-full"
+                >
+                  {fmt}
+                </span>
+              ))}
+            </div>
+            <p className="text-xs text-slate-400">Tamanho máximo: 20 MB</p>
           </div>
-        ) : (
-          <div className="w-full max-w-lg">
-            <div className="border-2 border-dashed border-border rounded-xl p-10 text-center bg-muted/30">
-              <div className="flex flex-col items-center gap-3">
-                <div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center">
-                  <FileJson className="h-7 w-7 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="font-semibold text-foreground">Faça login para continuar</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    É necessário estar autenticado para carregar e analisar exames.
-                  </p>
-                </div>
-                <Button onClick={() => (window.location.href = getLoginUrl())}>
-                  <LogIn className="h-4 w-4 mr-1.5" />
-                  Entrar com Manus
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
+        </div>
 
-        {/* Feature cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-16 max-w-2xl w-full">
+        {/* Feature Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-12 w-full max-w-2xl">
           {[
             {
-              icon: BarChart3,
-              title: "Gráficos interativos",
-              desc: "Visualize cada resultado em relação ao intervalo de referência com gráficos claros.",
+              icon: <FlaskConical className="h-5 w-5 text-blue-600" />,
+              title: "Exames Laboratoriais",
+              desc: "Tabela estruturada com valores e referências",
             },
             {
-              icon: Microscope,
-              title: "Interpretação clínica",
-              desc: "Textos de interpretação baseados em diretrizes para cada exame alterado.",
+              icon: <Scan className="h-5 w-5 text-teal-600" />,
+              title: "Exames de Imagem",
+              desc: "Eco, ultrassom, tomografia e ressonância",
             },
             {
-              icon: History,
-              title: "Histórico completo",
-              desc: "Todas as análises ficam salvas para consulta e comparação futura.",
+              icon: <FileText className="h-5 w-5 text-violet-600" />,
+              title: "Exportar PDF",
+              desc: "Relatório formatado pronto para revisão",
             },
-          ].map(({ icon: Icon, title, desc }) => (
-            <div key={title} className="bg-card border border-border rounded-xl p-5 text-left">
-              <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center mb-3">
-                <Icon className="h-5 w-5 text-primary" />
-              </div>
-              <p className="font-semibold text-sm text-foreground">{title}</p>
-              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{desc}</p>
+          ].map((card) => (
+            <div
+              key={card.title}
+              className="bg-white border border-slate-200 rounded-xl p-4 text-left"
+            >
+              <div className="mb-2">{card.icon}</div>
+              <p className="font-semibold text-slate-700 text-sm">{card.title}</p>
+              <p className="text-xs text-slate-400 mt-0.5">{card.desc}</p>
             </div>
           ))}
         </div>
-      </main>
 
-      <footer className="border-t border-border py-4 text-center text-xs text-muted-foreground">
-        LabInterpreter — Uso exclusivo para revisão médica profissional
-      </footer>
+        {isAuthenticated && (
+          <Button
+            variant="ghost"
+            className="mt-8 text-slate-500 gap-1.5 text-sm"
+            onClick={() => navigate("/history")}
+          >
+            Ver histórico de laudos
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        )}
+      </main>
     </div>
   );
 }

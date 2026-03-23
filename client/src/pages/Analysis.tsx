@@ -241,7 +241,7 @@ export default function Analysis() {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
         <p className="text-muted-foreground">Análise não encontrada.</p>
-        <Button onClick={() => navigate("/dashboard")}>Voltar ao histórico</Button>
+        <Button onClick={() => navigate("/history")}>Voltar ao histórico</Button>
       </div>
     );
   }
@@ -252,12 +252,12 @@ export default function Analysis() {
       <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="container flex items-center justify-between h-14">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/dashboard")}>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/history")}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div className="flex items-center gap-2">
               <FlaskConical className="h-5 w-5 text-primary" />
-              <span className="font-semibold text-foreground tracking-tight hidden sm:block">LabInterpreter</span>
+              <span className="font-semibold text-foreground tracking-tight hidden sm:block">MedSuite</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
