@@ -44,3 +44,11 @@
 - [x] labProcessor.ts removido — sem classificação automática
 - [x] Tabela exibe: nome, resultado, unidade, valor de referência
 - [x] 20 testes passando
+
+## Exportação PDF
+- [x] Instalar jsPDF + jspdf-autotable no frontend
+- [x] Criar função de geração de PDF no cliente (sem dependência de servidor)
+- [x] Botão "Exportar PDF" no header da página de análise
+- [x] PDF gerado com cabeçalho azul, dados do paciente em 2 colunas, tabela de resultados e rodapé com página
+- [x] Nome do arquivo: paciente_data.pdf
+- [x] 20 testes passando

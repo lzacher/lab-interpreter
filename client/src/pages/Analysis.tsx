@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useParams, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import {
   ChevronDown,
   ChevronUp,
   Loader2,
+  Download,
 } from "lucide-react";
 
 export default function Analysis() {
@@ -29,6 +30,7 @@ export default function Analysis() {
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [obsExpanded, setObsExpanded] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
 
   const { data: session, isLoading } = trpc.lab.getSession.useQuery(
     { sessionId },
@@ -42,6 +44,144 @@ export default function Analysis() {
     const q = search.toLowerCase();
     return all.filter((e) => e.name.toLowerCase().includes(q));
   }, [session, search]);
+
+  const exportPdf = useCallback(async () => {
+    if (!session) return;
+    setExportingPdf(true);
+    try {
+      const { jsPDF } = await import("jspdf");
+      const autoTable = (await import("jspdf-autotable")).default;
+
+      const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pageW = doc.internal.pageSize.getWidth();
+      const margin = 14;
+
+      // ── Cabeçalho ──────────────────────────────────────────────────────────
+      doc.setFillColor(30, 64, 103);
+      doc.rect(0, 0, pageW, 22, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("Laudo de Exames Laboratoriais", margin, 14);
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      doc.text(
+        `Gerado em ${new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })}`,
+        pageW - margin,
+        14,
+        { align: "right" }
+      );
+
+      let y = 30;
+
+      // ── Dados do paciente ──────────────────────────────────────────────────
+      doc.setTextColor(30, 64, 103);
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.text("Dados do Paciente", margin, y);
+      y += 5;
+      doc.setDrawColor(30, 64, 103);
+      doc.setLineWidth(0.3);
+      doc.line(margin, y, pageW - margin, y);
+      y += 4;
+
+      const patientFields = [
+        ["Nome", session.patientName],
+        ["Data de Nascimento", session.patientDob],
+        ["Sexo", session.patientSex],
+        ["Data da Coleta", session.collectionDate],
+        ["Data de Emissão", session.emissionDate],
+        ["Laboratório", session.laboratory],
+        ["Médico Solicitante", session.requestingDoctor],
+        ["Médico Responsável", session.responsibleDoctor],
+        ["Nº Atendimento", session.attendanceNumber],
+      ].filter(([, v]) => v) as [string, string][];
+
+      doc.setFontSize(8.5);
+      const colW = (pageW - margin * 2) / 2;
+      patientFields.forEach(([label, value], i) => {
+        const col = i % 2 === 0 ? margin : margin + colW;
+        if (i % 2 === 0 && i > 0) y += 6;
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(80, 80, 80);
+        doc.text(`${label}:`, col, y);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(30, 30, 30);
+        doc.text(value, col + 30, y);
+      });
+      if (patientFields.length % 2 !== 0) y += 6;
+      y += 8;
+
+      // ── Tabela de resultados ───────────────────────────────────────────────
+      doc.setTextColor(30, 64, 103);
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.text("Resultados dos Exames", margin, y);
+      y += 5;
+      doc.setDrawColor(30, 64, 103);
+      doc.line(margin, y, pageW - margin, y);
+      y += 2;
+
+      const allExams = session.exams as any[];
+      autoTable(doc, {
+        startY: y,
+        margin: { left: margin, right: margin },
+        head: [["Exame", "Resultado", "Unidade", "Valor de Referência"]],
+        body: allExams.map((e) => [
+          e.name ?? "",
+          e.result ?? "",
+          e.unit ?? "",
+          e.referenceRange ?? "",
+        ]),
+        styles: { fontSize: 7.5, cellPadding: 2.5, overflow: "linebreak", valign: "top" },
+        headStyles: { fillColor: [30, 64, 103], textColor: 255, fontStyle: "bold", fontSize: 8 },
+        alternateRowStyles: { fillColor: [245, 248, 252] },
+        columnStyles: {
+          0: { cellWidth: 45 },
+          1: { cellWidth: 20, halign: "right" },
+          2: { cellWidth: 18 },
+          3: { cellWidth: "auto" },
+        },
+      });
+
+      // ── Observações ────────────────────────────────────────────────────────
+      if (session.observations) {
+        const finalY = (doc as any).lastAutoTable?.finalY ?? y;
+        const obsY = finalY + 8;
+        if (obsY < doc.internal.pageSize.getHeight() - 20) {
+          doc.setTextColor(30, 64, 103);
+          doc.setFontSize(9);
+          doc.setFont("helvetica", "bold");
+          doc.text("Observações", margin, obsY);
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(7.5);
+          doc.setTextColor(60, 60, 60);
+          const lines = doc.splitTextToSize(session.observations, pageW - margin * 2);
+          doc.text(lines, margin, obsY + 5);
+        }
+      }
+
+      // ── Rodapé ─────────────────────────────────────────────────────────────
+      const pageCount = (doc.internal as any).getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(7);
+        doc.setTextColor(150, 150, 150);
+        doc.text(
+          `Página ${i} de ${pageCount} — LabInterpreter — Uso exclusivo para revisão médica profissional`,
+          pageW / 2,
+          doc.internal.pageSize.getHeight() - 6,
+          { align: "center" }
+        );
+      }
+
+      const patientSlug = (session.patientName ?? "laudo").replace(/\s+/g, "_").toLowerCase();
+      const dateSlug = (session.collectionDate ?? new Date().toLocaleDateString("pt-BR")).replace(/\//g, "-");
+      doc.save(`${patientSlug}_${dateSlug}.pdf`);
+    } finally {
+      setExportingPdf(false);
+    }
+  }, [session]);
 
   if (isLoading) {
     return (
@@ -74,9 +214,23 @@ export default function Analysis() {
               <span className="font-semibold text-foreground tracking-tight hidden sm:block">LabInterpreter</span>
             </div>
           </div>
-          <span className="text-sm font-medium text-foreground truncate max-w-[200px]">
-            {session.patientName ?? "Paciente"}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-foreground truncate max-w-[160px] hidden sm:block">
+              {session.patientName ?? "Paciente"}
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={exportPdf}
+              disabled={exportingPdf}
+              className="flex items-center gap-1.5"
+            >
+              {exportingPdf
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : <Download className="h-4 w-4" />}
+              <span className="hidden sm:inline">{exportingPdf ? "Gerando…" : "Exportar PDF"}</span>
+            </Button>
+          </div>
         </div>
       </header>
 
