@@ -29,3 +29,10 @@
 - [x] Ampliar base de conhecimento clínico: PCR ultra-sensível, Estradiol, Testosterona Total/Livre/Biodisponível, SHBG
 - [x] Melhorar `classifyExam` para usar o campo `status` do JSON quando o intervalo não for parseável
 - [x] Atualizar testes unitários para cobrir os novos casos (39 testes passando)
+
+## Simplificação (solicitação do usuário)
+- [x] Remover classificação automática (elevado/baixo/normal) da exibição
+- [x] Exibir tabela com: nome, resultado, unidade, valor de referência, interpretação clínica
+- [x] Remover gráficos de barras e badges de status da página de análise
+- [x] Manter resumo executivo simplificado (total de exames)
+- [x] 39 testes passando
