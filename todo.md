@@ -123,3 +123,11 @@
 - [x] Corrigir: função normalizeStatus() adicionada ao jsonExtractor.ts (mapeia texto → palavra curta)
 - [x] Corrigir: prompt do LLM atualizado para instruir status em formato curto
 - [x] 49 testes passando (13 novos testes de normalizeStatus)
+
+## Bug: Erro de inserção — campo `result` dos exames recebe texto longo
+- [x] Ampliar campo `result` de varchar(100) para TEXT no banco
+- [x] Ampliar campo `unit` de varchar(50) para TEXT no banco
+- [x] Ampliar campo `referenceRange` já era TEXT — OK
+- [x] Corrigido: classificações manuais do frontend agora são enviadas ao backend no payload do process
+- [x] Backend usa classificações do frontend com prioridade sobre as do banco
+- [x] 49 testes passando

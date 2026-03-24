@@ -215,9 +215,17 @@ export default function ReviewPage() {
     setProcessingStep("Extraindo texto e estruturando dados…");
 
     try {
+      // Montar mapa de classificações de TODAS as páginas para o backend
+      // O backend usa isso para determinar o tipo correto do documento
+      const pageClassifications: Record<string, "laudo" | "imagem" | "indefinido"> = {};
+      for (const p of pages) {
+        pageClassifications[String(p.pageNumber)] = p.type;
+      }
+
       const result = await processMutation.mutateAsync({
         documentId,
         selectedPageNumbers: selected.map((p) => p.pageNumber),
+        pageClassifications,
       });
 
       if (result.resultType === "lab") {

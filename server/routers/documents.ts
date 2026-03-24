@@ -146,6 +146,11 @@ export const documentsRouter = router({
       z.object({
         documentId: z.number(),
         selectedPageNumbers: z.array(z.number()).min(1),
+        // Classificações manuais das páginas enviadas pelo frontend
+        // chave = número da página como string, valor = classificação
+        pageClassifications: z
+          .record(z.string(), z.enum(["laudo", "imagem", "indefinido"]))
+          .optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -180,13 +185,20 @@ export const documentsRouter = router({
         // Concatenar todo o texto extraído
         const fullText = ocrResult.pages.map((p) => p.text).join("\n\n");
 
-        // Detectar tipo predominante das páginas selecionadas
-        const selectedPages = savedPages.filter((p) =>
-          input.selectedPageNumbers.includes(p.pageNumber)
-        );
-        const classifications = selectedPages.map(
-          (p) => (p.classification ?? "indefinido") as "laudo" | "imagem" | "indefinido"
-        );
+        // Determinar tipo do documento:
+        // Prioridade 1: classificações enviadas pelo frontend (estado atual da UI)
+        // Prioridade 2: classificações salvas no banco (fallback)
+        const classifications = input.selectedPageNumbers.map((pageNum) => {
+          // Tentar usar classificação do frontend primeiro
+          if (input.pageClassifications) {
+            const frontendClass = input.pageClassifications[String(pageNum)];
+            if (frontendClass) return frontendClass as "laudo" | "imagem" | "indefinido";
+          }
+          // Fallback: usar classificação do banco
+          const dbPage = savedPages.find((p) => p.pageNumber === pageNum);
+          return (dbPage?.classification ?? "indefinido") as "laudo" | "imagem" | "indefinido";
+        });
+
         const docType = detectDocumentType(classifications);
 
         // Extrair nome do paciente do nome do arquivo (fallback)

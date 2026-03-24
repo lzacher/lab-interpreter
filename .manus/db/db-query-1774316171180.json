@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE exams MODIFY COLUMN result TEXT; ALTER TABLE exams MODIFY COLUMN unit TEXT;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sWoaWTPntxGbWh.2ac340c65fe1 --database SYJ8HnCW4cDbQBB8KzYoKX --execute ALTER TABLE exams MODIFY COLUMN result TEXT; ALTER TABLE exams MODIFY COLUMN unit TEXT;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1642
+}
