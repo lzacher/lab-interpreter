@@ -98,3 +98,10 @@
 - [x] Frontend: navegação por teclado (← →) e botão Prev/Next no modal
 - [x] Frontend: seleção e reclassificação direto do modal de zoom
 - [x] 36 testes passando
+
+## Bug: Thumbnail vazio em PDFs com fontes incorporadas
+- [x] Substituir pdfjs-dist por poppler-utils (pdftoppm) para renderização de thumbnails
+- [x] Imports movidos para o topo do arquivo (compatível com esbuild)
+- [x] Servidor reiniciado sem erros
+- [x] 36 testes passando
+- [ ] Testar com laudo de ressonância magnética (aguardando arquivo do usuário)
