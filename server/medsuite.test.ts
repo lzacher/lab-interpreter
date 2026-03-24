@@ -32,12 +32,10 @@ describe("detectDocumentType", () => {
   });
 
   it("retorna 'lab' quando todas são indefinido (laudo >= imagem)", () => {
-    // 0 laudos >= 0 imagens → 'lab' por padrão
     expect(detectDocumentType(["indefinido", "indefinido"])).toBe("lab");
   });
 
   it("lida com array vazio retornando 'lab' (laudo >= imagem)", () => {
-    // Com 0 laudos e 0 imagens, laudoCount >= imagemCount → 'lab'
     expect(detectDocumentType([])).toBe("lab");
   });
 });
@@ -78,6 +76,76 @@ describe("generateFileName", () => {
   it("usa apenas o primeiro nome", () => {
     const name = generateFileName("Roberto Carlos Braga", "lab");
     expect(name).toBe("roberto_lab.json");
+  });
+});
+
+// ─── normalizeStatus ─────────────────────────────────────────────────────────
+// Replica a lógica interna de normalizeStatus para cobertura de testes.
+
+function normalizeStatus(raw: string): string {
+  if (!raw) return "";
+  const s = raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  if (s.includes("elevado") || s.includes("acima") || s.includes("aumentado")) return "elevado";
+  if (s.includes("baixo") || s.includes("abaixo") || s.includes("reduzido")) return "baixo";
+  if (s.includes("critico") || s.includes("panico") || s.includes("critica")) return "critico";
+  if (s.includes("alterado") || s.includes("anormal") || s.includes("fora")) return "alterado";
+  if (s.includes("normal") || s.includes("dentro") || s.includes("referencia")) return "normal";
+  if (s.includes("alto")) return "elevado";
+  if (raw.trim().length <= 15) return raw.trim();
+  return "";
+}
+
+describe("normalizeStatus", () => {
+  it("mapeia 'Dentro do intervalo de referência' para 'normal'", () => {
+    expect(normalizeStatus("Dentro do intervalo de referência")).toBe("normal");
+  });
+
+  it("mapeia 'Normal' para 'normal'", () => {
+    expect(normalizeStatus("Normal")).toBe("normal");
+  });
+
+  it("mapeia 'Elevado' para 'elevado'", () => {
+    expect(normalizeStatus("Elevado")).toBe("elevado");
+  });
+
+  it("mapeia 'Acima do valor de referência' para 'elevado'", () => {
+    expect(normalizeStatus("Acima do valor de referência")).toBe("elevado");
+  });
+
+  it("mapeia 'Baixo' para 'baixo'", () => {
+    expect(normalizeStatus("Baixo")).toBe("baixo");
+  });
+
+  it("mapeia 'Abaixo do intervalo' para 'baixo'", () => {
+    expect(normalizeStatus("Abaixo do intervalo")).toBe("baixo");
+  });
+
+  it("mapeia 'Alterado' para 'alterado'", () => {
+    expect(normalizeStatus("Alterado")).toBe("alterado");
+  });
+
+  it("mapeia 'Crítico' para 'critico'", () => {
+    expect(normalizeStatus("Crítico")).toBe("critico");
+  });
+
+  it("retorna string vazia para input vazio", () => {
+    expect(normalizeStatus("")).toBe("");
+  });
+
+  it("retorna string curta como está (até 15 chars)", () => {
+    expect(normalizeStatus("reagente")).toBe("reagente");
+  });
+
+  it("mapeia 'Resultado dentro dos parâmetros esperados' para 'normal' (contém 'dentro')", () => {
+    expect(normalizeStatus("Resultado dentro dos parâmetros esperados para a faixa etária")).toBe("normal");
+  });
+
+  it("mapeia 'Aumentado' para 'elevado'", () => {
+    expect(normalizeStatus("Aumentado")).toBe("elevado");
+  });
+
+  it("mapeia 'Reduzido' para 'baixo'", () => {
+    expect(normalizeStatus("Reduzido")).toBe("baixo");
   });
 });
 

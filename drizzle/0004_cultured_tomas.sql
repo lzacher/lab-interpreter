@@ -1,0 +1,1 @@
+ALTER TABLE `exams` MODIFY COLUMN `status` text;

@@ -51,6 +51,31 @@ export type ExtractedResult =
   | { type: "imaging"; data: ImagingJson; fileName: string }
   | { type: "error"; error: string };
 
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+/**
+ * Normaliza o campo status retornado pelo LLM para uma palavra curta.
+ * O LLM pode retornar frases longas como "Dentro do intervalo de referência";
+ * esta função mapeia para o valor canônico mais próximo.
+ */
+function normalizeStatus(raw: string): string {
+  if (!raw) return "";
+  const s = raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  // Verificar elevado/baixo/crítico/alterado ANTES de normal
+  // para evitar que "acima do valor de referência" seja mapeado para normal
+  if (s.includes("elevado") || s.includes("acima") || s.includes("aumentado")) return "elevado";
+  if (s.includes("baixo") || s.includes("abaixo") || s.includes("reduzido")) return "baixo";
+  if (s.includes("critico") || s.includes("panico") || s.includes("critica")) return "critico";
+  if (s.includes("alterado") || s.includes("anormal") || s.includes("fora")) return "alterado";
+  if (s.includes("normal") || s.includes("dentro") || s.includes("referencia")) return "normal";
+  // "alto" pode ser parte de "alterado" — verificar após alterado
+  if (s.includes("alto")) return "elevado";
+  // Se for uma palavra curta (até 15 chars), retornar como está
+  if (raw.trim().length <= 15) return raw.trim();
+  // Texto longo não mapeado → vazio
+  return "";
+}
+
 // ─── Lab Extraction ───────────────────────────────────────────────────────────
 
 export async function extractLabJson(
@@ -64,7 +89,8 @@ export async function extractLabJson(
         content: `Você é um especialista em extração de dados de laudos laboratoriais brasileiros.
 Extraia TODOS os exames do texto fornecido e retorne um JSON estruturado.
 Para cada exame, extraia: nome, resultado, unidade, valor_referencia e status.
-O status deve ser exatamente como aparece no laudo (normal, elevado, alto, baixo, alterado, etc.).
+REGRA IMPORTANTE para o campo status: use APENAS uma destas palavras exatas: "normal", "elevado", "alto", "baixo", "alterado", "critico" ou "" (vazio).
+NUNCA escreva frases longas no status. Apenas UMA PALAVRA do conjunto acima.
 Se um campo não estiver disponível, use string vazia "".
 Retorne APENAS o JSON, sem comentários.`,
       },
@@ -134,6 +160,14 @@ Retorne APENAS o JSON, sem comentários.`,
   if (!raw) throw new Error("LLM não retornou conteúdo para extração de laboratório.");
 
   const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+
+  // Normalizar status de cada exame para garantir que seja curto
+  if (parsed.exames && Array.isArray(parsed.exames)) {
+    parsed.exames = parsed.exames.map((exam: LabExam) => ({
+      ...exam,
+      status: normalizeStatus(exam.status),
+    }));
+  }
 
   // Se o nome do paciente não foi extraído, usar o nome do arquivo
   if (!parsed.paciente_nome && patientName) {

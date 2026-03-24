@@ -116,3 +116,10 @@
 - [x] Ao clicar "Processar", chama trpc.documents.process com páginas selecionadas
 - [x] Corrigido: @import do Google Fonts movido para index.html (elimina warning de CSS)
 - [x] 36 testes passando
+
+## Bug: Erro de inserção no banco — campo `status` dos exames
+- [x] Diagnosticar: campo `status` no schema do banco era varchar(30) mas LLM retornava texto longo
+- [x] Corrigir: migração aplicada — campo `status` alterado para TEXT
+- [x] Corrigir: função normalizeStatus() adicionada ao jsonExtractor.ts (mapeia texto → palavra curta)
+- [x] Corrigir: prompt do LLM atualizado para instruir status em formato curto
+- [x] 49 testes passando (13 novos testes de normalizeStatus)

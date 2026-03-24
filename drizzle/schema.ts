@@ -106,7 +106,7 @@ export const exams = mysqlTable("exams", {
   result: varchar("result", { length: 100 }),
   unit: varchar("unit", { length: 50 }),
   referenceRange: text("referenceRange"),
-  status: varchar("status", { length: 30 }),
+  status: text("status"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
