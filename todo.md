@@ -105,3 +105,14 @@
 - [x] Servidor reiniciado sem erros
 - [x] 36 testes passando
 - [ ] Testar com laudo de ressonância magnética (aguardando arquivo do usuário)
+
+## Visualização direta no browser (substituir thumbnails server-side)
+- [x] Instalar pdfjs-dist no frontend
+- [x] Criar componente PdfPageCanvas que renderiza cada página do PDF no canvas do browser
+- [x] Reescrever Review.tsx v5: recebe documentId da URL, busca arquivo do S3, renderiza no browser
+- [x] Exibir páginas como pequenas janelas clicáveis (canvas 180px de largura)
+- [x] Modal de zoom ao clicar mostra a página em tamanho maior (560px)
+- [x] Classificação e seleção permanecem funcionando igual ao anterior
+- [x] Ao clicar "Processar", chama trpc.documents.process com páginas selecionadas
+- [x] Corrigido: @import do Google Fonts movido para index.html (elimina warning de CSS)
+- [x] 36 testes passando
