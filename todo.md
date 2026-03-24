@@ -76,3 +76,15 @@
 - [ ] Página History: histórico unificado (lab + imagem)
 - [ ] Testes unitários backend
 - [ ] Checkpoint final + repositório GitHub medsuite
+
+## Etapa de Revisão pelo Usuário (reimplementação)
+- [x] Reescrever Review.tsx com grade de thumbnails completa
+- [x] Badges de classificação com cores (laudo/imagem/indefinido)
+- [x] Correção manual da classificação por página (dropdown)
+- [x] Seleção individual de páginas para OCR (checkbox)
+- [x] Botões de seleção rápida: Laudos / Todas / Nenhuma
+- [x] Botão "Processar selecionadas" no header e no rodapé (mobile-friendly)
+- [x] Overlay de processamento com spinner e mensagem
+- [x] Indicador de etapas (Upload → Revisão → Processamento → Resultado)
+- [x] Banner de instrução contextual
+- [x] 36 testes passando
