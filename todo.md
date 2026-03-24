@@ -88,3 +88,13 @@
 - [x] Indicador de etapas (Upload → Revisão → Processamento → Resultado)
 - [x] Banner de instrução contextual
 - [x] 36 testes passando
+
+## Melhoria de Visualização de Páginas (Revisão)
+- [x] Backend: renderização real via pdfjs para TODOS os PDFs (removido SVG de texto)
+- [x] Backend: resolução do thumbnail aumentada para 800px, qualidade JPEG 88%
+- [x] Frontend: grade de miniaturas com 5 colunas em desktop
+- [x] Frontend: botão de zoom (lupa) aparece ao passar o mouse sobre cada miniatura
+- [x] Frontend: modal de zoom com imagem em tamanho ampliado
+- [x] Frontend: navegação por teclado (← →) e botão Prev/Next no modal
+- [x] Frontend: seleção e reclassificação direto do modal de zoom
+- [x] 36 testes passando

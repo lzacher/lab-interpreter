@@ -12,7 +12,6 @@ import { useEffect, useState, useCallback } from "react";
 import { useLocation, useParams } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
   FlaskConical,
@@ -31,6 +30,8 @@ import {
   ScanLine,
   Layers,
   AlertCircle,
+  ZoomIn,
+  ChevronLeft,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -117,17 +118,149 @@ function StepIndicator({ current }: { current: "upload" | "review" | "process" |
   );
 }
 
+// ─── Zoom Modal ───────────────────────────────────────────────────────────────
+
+interface ZoomModalProps {
+  pages: PageMeta[];
+  initialIndex: number;
+  onClose: () => void;
+  onChangeClassification: (pageId: number, cls: Classification) => void;
+  onToggleSelect: (pageNumber: number) => void;
+  selectedPages: Set<number>;
+  updatingId: number | null;
+}
+
+function ZoomModal({ pages, initialIndex, onClose, onChangeClassification, onToggleSelect, selectedPages, updatingId }: ZoomModalProps) {
+  const [idx, setIdx] = useState(initialIndex);
+  const page = pages[idx];
+  const cls = page?.classification ?? "indefinido";
+  const config = CLASS_CONFIG[cls];
+  const selected = page ? selectedPages.has(page.pageNumber) : false;
+
+  // Close on Escape, navigate with arrow keys
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowRight") setIdx((i) => Math.min(i + 1, pages.length - 1));
+      if (e.key === "ArrowLeft") setIdx((i) => Math.max(i - 1, 0));
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [pages.length, onClose]);
+
+  if (!page) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[92vh] flex flex-col overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Modal header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-slate-800 text-sm">Página {page.pageNumber}</span>
+            <span className="text-slate-400 text-xs">de {pages.length}</span>
+            <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${config.badgeClass}`}>
+              {config.icon}
+              {config.shortLabel}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            {/* Select / Deselect button */}
+            <button
+              onClick={() => onToggleSelect(page.pageNumber)}
+              className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors
+                ${selected
+                  ? "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
+                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                }`}
+            >
+              {selected ? <CheckSquare className="h-3.5 w-3.5" /> : <Square className="h-3.5 w-3.5" />}
+              {selected ? "Selecionada" : "Selecionar"}
+            </button>
+            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Image */}
+        <div className="flex-1 overflow-auto bg-slate-50 flex items-start justify-center p-4">
+          {page.thumbnailUrl ? (
+            <img
+              src={page.thumbnailUrl}
+              alt={`Página ${page.pageNumber}`}
+              className="max-w-full rounded-lg shadow-md border border-slate-200"
+              style={{ maxHeight: "60vh", objectFit: "contain" }}
+            />
+          ) : (
+            <div className="flex flex-col items-center gap-3 text-slate-300 py-16">
+              <FileText className="h-16 w-16" />
+              <span className="text-sm">Sem prévia disponível</span>
+            </div>
+          )}
+        </div>
+
+        {/* Classification + navigation */}
+        <div className="px-4 py-3 border-t border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <span className="text-xs text-slate-500 shrink-0">Classificar como:</span>
+            <select
+              className="flex-1 text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-700
+                focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400"
+              value={cls}
+              onChange={(e) => onChangeClassification(page.id, e.target.value as Classification)}
+              disabled={updatingId === page.id}
+            >
+              <option value="laudo">Laboratório / Relatório</option>
+              <option value="imagem">Imagem diagnóstica</option>
+              <option value="indefinido">Indefinido</option>
+            </select>
+            {updatingId === page.id && <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400 shrink-0" />}
+          </div>
+
+          {/* Prev / Next navigation */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={() => setIdx((i) => Math.max(i - 1, 0))}
+              disabled={idx === 0}
+              className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Página anterior (←)"
+            >
+              <ChevronLeft className="h-4 w-4 text-slate-600" />
+            </button>
+            <span className="text-xs text-slate-500 min-w-[4rem] text-center">{idx + 1} / {pages.length}</span>
+            <button
+              onClick={() => setIdx((i) => Math.min(i + 1, pages.length - 1))}
+              disabled={idx === pages.length - 1}
+              className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Próxima página (→)"
+            >
+              <ChevronRight className="h-4 w-4 text-slate-600" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Page Card ────────────────────────────────────────────────────────────────
 
 interface PageCardProps {
   page: PageMeta;
   selected: boolean;
   onToggle: () => void;
+  onZoom: () => void;
   onChangeClassification: (cls: Classification) => void;
   updatingId: number | null;
 }
 
-function PageCard({ page, selected, onToggle, onChangeClassification, updatingId }: PageCardProps) {
+function PageCard({ page, selected, onToggle, onZoom, onChangeClassification, updatingId }: PageCardProps) {
   const cls = page.classification;
   const config = CLASS_CONFIG[cls];
   const isUpdating = updatingId === page.id;
@@ -141,7 +274,7 @@ function PageCard({ page, selected, onToggle, onChangeClassification, updatingId
         }
       `}
     >
-      {/* Thumbnail — clicável para selecionar */}
+      {/* Thumbnail */}
       <div
         className="aspect-[3/4] bg-slate-100 flex items-center justify-center overflow-hidden cursor-pointer relative"
         onClick={onToggle}
@@ -183,6 +316,16 @@ function PageCard({ page, selected, onToggle, onChangeClassification, updatingId
             </div>
           )}
         </div>
+
+        {/* Zoom button — aparece no hover */}
+        <button
+          className="absolute bottom-2 right-2 bg-white/90 backdrop-blur-sm rounded-lg p-1.5 shadow-sm
+            opacity-0 group-hover:opacity-100 transition-opacity duration-150 hover:bg-white"
+          onClick={(e) => { e.stopPropagation(); onZoom(); }}
+          title="Ampliar página"
+        >
+          <ZoomIn className="h-3.5 w-3.5 text-slate-600" />
+        </button>
       </div>
 
       {/* Rodapé do card — classificação */}
@@ -227,6 +370,8 @@ export default function Review() {
   const [updatingPageId, setUpdatingPageId] = useState<number | null>(null);
   // Local copy of pages to reflect classification changes immediately
   const [localPages, setLocalPages] = useState<PageMeta[]>([]);
+  // Zoom modal: index into localPages (-1 = closed)
+  const [zoomIndex, setZoomIndex] = useState<number>(-1);
 
   const { data, isLoading, refetch } = trpc.documents.getDocument.useQuery(
     { documentId },
@@ -557,17 +702,31 @@ export default function Review() {
         {/* ── Pages grid ──────────────────────────────────────────────────── */}
         {isAnalyzed && (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {localPages.map((page) => (
+            {localPages.map((page, idx) => (
               <PageCard
                 key={page.id}
                 page={page}
                 selected={selectedPages.has(page.pageNumber)}
                 onToggle={() => togglePage(page.pageNumber)}
+                onZoom={() => setZoomIndex(idx)}
                 onChangeClassification={(cls) => changeClassification(page.id, cls)}
                 updatingId={updatingPageId}
               />
             ))}
           </div>
+        )}
+
+        {/* ── Zoom Modal ───────────────────────────────────────────────────── */}
+        {zoomIndex >= 0 && (
+          <ZoomModal
+            pages={localPages}
+            initialIndex={zoomIndex}
+            onClose={() => setZoomIndex(-1)}
+            onChangeClassification={(pageId, cls) => changeClassification(pageId, cls)}
+            onToggleSelect={togglePage}
+            selectedPages={selectedPages}
+            updatingId={updatingPageId}
+          />
         )}
 
         {/* ── Bottom action bar (mobile-friendly) ─────────────────────────── */}

@@ -211,10 +211,10 @@ function scoreText(text: string): { score: number; wordCount: number; keywordsFo
 
 // ─── Thumbnail Generation ─────────────────────────────────────────────────────
 
-async function toThumbnailBase64(imageBuffer: Buffer, maxWidth = 400): Promise<string> {
+async function toThumbnailBase64(imageBuffer: Buffer, maxWidth = 800): Promise<string> {
   const thumb = await sharp(imageBuffer)
-    .resize(maxWidth, Math.floor(maxWidth * 1.4), { fit: "inside", withoutEnlargement: true })
-    .jpeg({ quality: 78 })
+    .resize(maxWidth, Math.floor(maxWidth * 1.5), { fit: "inside", withoutEnlargement: true })
+    .jpeg({ quality: 88 })
     .toBuffer();
   return thumb.toString("base64");
 }
@@ -331,72 +331,44 @@ async function analyzePdf(filePath: string): Promise<AnalyzeResult> {
     const nativeText = (pageTexts[i] || "").trim();
     const hasNativeText = nativeText.length > 50;
 
-    if (hasNativeText) {
-      // Native-text PDF: score text directly, generate text-preview thumbnail
-      const { score, wordCount, keywordsFound } = scoreText(nativeText);
-      const classification: PageClassification = score >= 30 ? "laudo" : "imagem";
+    // Always render the real page as image for the thumbnail
+    // This ensures the user sees the actual document content, not a text preview
+    const pageImageBuffer = await renderPdfPageToJpeg(fileBuffer, pageNum);
 
-      const svgLines = nativeText
-        .substring(0, 400)
-        .split(/\s+/)
-        .reduce((acc: string[], word, idx) => {
-          const lineIdx = Math.floor(idx / 8);
-          if (!acc[lineIdx]) acc[lineIdx] = "";
-          acc[lineIdx] += word + " ";
-          return acc;
-        }, []);
+    if (pageImageBuffer) {
+      // Generate high-quality thumbnail (800px wide for clear reading)
+      const thumbnailBase64 = await toThumbnailBase64(pageImageBuffer, 800);
 
-      const svgTextLines = svgLines
-        .slice(0, 14)
-        .map(
-          (line, idx) =>
-            `<text x="12" y="${28 + idx * 15}" font-family="sans-serif" font-size="8" fill="#334155">${line.substring(0, 48).replace(/[<>&"']/g, " ")}</text>`
-        )
-        .join("\n");
+      let classification: PageClassification;
+      let score: number;
+      let details: PageAnalysis["details"];
 
-      const svg = `<svg width="300" height="420" xmlns="http://www.w3.org/2000/svg">
-        <rect width="300" height="420" fill="white" stroke="#e2e8f0" stroke-width="1"/>
-        <rect x="0" y="0" width="300" height="16" fill="#f1f5f9"/>
-        <text x="150" y="11" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#64748b">Página ${pageNum} — Texto Nativo</text>
-        ${svgTextLines}
-      </svg>`;
+      if (hasNativeText) {
+        // Native-text PDF: classify by text scoring (fast, no LLM needed)
+        const scored = scoreText(nativeText);
+        classification = scored.score >= 30 ? "laudo" : "imagem";
+        score = scored.score;
+        details = { wordCount: scored.wordCount, keywordsFound: scored.keywordsFound, hasNativeText: true, isScanned: false };
+      } else {
+        // Scanned PDF: classify by LLM vision
+        const llmResult = await classifyImageWithLLM(thumbnailBase64);
+        classification = llmResult.classification;
+        score = llmResult.score;
+        details = { hasNativeText: false, isScanned: true };
+      }
 
-      const svgBuf = await sharp(Buffer.from(svg)).jpeg({ quality: 80 }).toBuffer();
-      const thumbnailBase64 = svgBuf.toString("base64");
-
+      pages.push({ pageNumber: pageNum, classification, score, thumbnailBase64, details });
+    } else {
+      // Render failed: use placeholder, classify by text if available
+      const thumbnailBase64 = await makePlaceholderThumbnail(pageNum);
+      const { score, wordCount, keywordsFound } = hasNativeText ? scoreText(nativeText) : { score: 60, wordCount: 0, keywordsFound: 0 };
       pages.push({
         pageNumber: pageNum,
-        classification,
+        classification: hasNativeText && score >= 30 ? "laudo" : "laudo",
         score,
         thumbnailBase64,
-        details: { wordCount, keywordsFound, hasNativeText: true, isScanned: false },
+        details: { wordCount, keywordsFound, hasNativeText, isScanned: !hasNativeText },
       });
-    } else {
-      // Scanned PDF: render page as real image (capped at MAX_RENDER_DIM)
-      const pageImageBuffer = await renderPdfPageToJpeg(fileBuffer, pageNum);
-
-      if (pageImageBuffer) {
-        const thumbnailBase64 = await toThumbnailBase64(pageImageBuffer, 400);
-        const { classification, score } = await classifyImageWithLLM(thumbnailBase64);
-
-        pages.push({
-          pageNumber: pageNum,
-          classification,
-          score,
-          thumbnailBase64,
-          details: { hasNativeText: false, isScanned: true },
-        });
-      } else {
-        // Render failed: use placeholder, default to laudo
-        const thumbnailBase64 = await makePlaceholderThumbnail(pageNum);
-        pages.push({
-          pageNumber: pageNum,
-          classification: "laudo",
-          score: 60,
-          thumbnailBase64,
-          details: { hasNativeText: false, isScanned: true },
-        });
-      }
     }
   }
 
@@ -405,7 +377,7 @@ async function analyzePdf(filePath: string): Promise<AnalyzeResult> {
 
 async function analyzeImage(filePath: string): Promise<AnalyzeResult> {
   const imageBuffer = fs.readFileSync(filePath);
-  const thumbnailBase64 = await toThumbnailBase64(imageBuffer, 400);
+  const thumbnailBase64 = await toThumbnailBase64(imageBuffer, 800);
   const { classification, score } = await classifyImageWithLLM(thumbnailBase64);
 
   return {
