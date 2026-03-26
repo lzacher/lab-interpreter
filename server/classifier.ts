@@ -390,6 +390,31 @@ export async function analyzeDocument(filePath: string): Promise<AnalyzeResult> 
   throw new Error(`Tipo de arquivo não suportado: ${ext}`);
 }
 
+/**
+ * Extract native text from a SINGLE PDF page using pdftotext (poppler).
+ * Much more reliable than loading the entire PDF for large documents.
+ */
+async function extractNativeTextSinglePage(pdfBuffer: Buffer, pageNumber: number): Promise<string> {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "medsuite-txt-"));
+  const tmpPdf = path.join(tmpDir, "input.pdf");
+  try {
+    fs.writeFileSync(tmpPdf, pdfBuffer);
+    const { stdout } = await execFileAsync("pdftotext", [
+      "-f", String(pageNumber),
+      "-l", String(pageNumber),
+      "-layout",
+      tmpPdf,
+      "-",
+    ]);
+    return (stdout || "").trim();
+  } catch (err) {
+    console.error(`[classifier] pdftotext page ${pageNumber} error:`, err);
+    return "";
+  } finally {
+    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+  }
+}
+
 export async function extractTextFromPages(
   filePath: string,
   selectedPageNumbers: number[]
@@ -397,34 +422,44 @@ export async function extractTextFromPages(
   const ext = path.extname(filePath).toLowerCase();
   const results: OcrPage[] = [];
 
+  console.log(`[OCR] Iniciando — arquivo: ${path.basename(filePath)}, páginas selecionadas: [${selectedPageNumbers.join(", ")}]`);
+
   if (ext === ".pdf") {
     const fileBuffer = fs.readFileSync(filePath);
-    const pageTexts = await extractNativeTextPerPage(fileBuffer);
 
     for (const pageNum of selectedPageNumbers) {
-      const nativeText = (pageTexts[pageNum - 1] || "").trim();
+      console.log(`[OCR] Processando página ${pageNum}...`);
+
+      // 1ª tentativa: pdftotext (poppler) — extrai apenas a página solicitada, sem carregar o PDF inteiro
+      const nativeText = await extractNativeTextSinglePage(fileBuffer, pageNum);
+      console.log(`[OCR] Página ${pageNum} — texto nativo (pdftotext): ${nativeText.length} chars`);
 
       if (nativeText.length > 50) {
         results.push({ pageNumber: pageNum, text: nativeText, charCount: nativeText.length });
+        console.log(`[OCR] Página ${pageNum} — OK via pdftotext`);
       } else {
-        // Scanned page: render at moderate resolution for LLM OCR
+        // 2ª tentativa: PDF escaneado — renderizar com pdftoppm e enviar ao LLM
+        console.log(`[OCR] Página ${pageNum} — texto insuficiente, renderizando via pdftoppm...`);
         const pageImageBuffer = await renderPdfPageToJpeg(fileBuffer, pageNum);
 
         if (pageImageBuffer) {
-          // Resize to max 1400px wide for LLM high-detail mode (good quality, manageable size)
+          console.log(`[OCR] Página ${pageNum} — imagem: ${pageImageBuffer.length} bytes, enviando ao LLM...`);
           const resizedBuffer = await sharp(pageImageBuffer)
             .resize(1400, 1960, { fit: "inside", withoutEnlargement: true })
             .jpeg({ quality: 88 })
             .toBuffer();
           const imageBase64 = resizedBuffer.toString("base64");
           const extractedText = await extractTextWithLLM(imageBase64);
+          console.log(`[OCR] Página ${pageNum} — LLM retornou: ${extractedText.length} chars`);
           results.push({ pageNumber: pageNum, text: extractedText, charCount: extractedText.length });
         } else {
+          console.error(`[OCR] Página ${pageNum} — FALHA: pdftoppm não gerou imagem`);
           results.push({ pageNumber: pageNum, text: "", charCount: 0 });
         }
       }
     }
   } else if ([".jpg", ".jpeg", ".png"].includes(ext)) {
+    console.log(`[OCR] Processando imagem diretamente via LLM...`);
     const imageBuffer = fs.readFileSync(filePath);
     const resizedBuffer = await sharp(imageBuffer)
       .resize(1400, 1960, { fit: "inside", withoutEnlargement: true })
@@ -432,8 +467,11 @@ export async function extractTextFromPages(
       .toBuffer();
     const imageBase64 = resizedBuffer.toString("base64");
     const extractedText = await extractTextWithLLM(imageBase64);
+    console.log(`[OCR] Imagem — LLM retornou: ${extractedText.length} chars`);
     results.push({ pageNumber: 1, text: extractedText, charCount: extractedText.length });
   }
 
+  const totalChars = results.reduce((s, p) => s + p.charCount, 0);
+  console.log(`[OCR] Concluído — ${results.length} página(s), total: ${totalChars} chars`);
   return { pages: results };
 }

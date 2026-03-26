@@ -136,3 +136,11 @@
 - [x] Corrigido: o canvas do PDF.js não propagava cliques para o card pai
 - [x] Solução: overlay transparente (z-20) sobre o preview captura o clique e chama onToggleSelect
 - [x] Botão de zoom elevado para z-30 para ficar acima do overlay
+
+## Bug: Processamento seletivo de páginas não funciona corretamente
+- [x] Causa raiz: extractNativeTextPerPage carregava TODAS as páginas do PDF (pdfjs-dist)
+      podendo falhar silenciosamente em PDFs grandes e cair em fallback incorreto
+- [x] Correção: nova função extractNativeTextSinglePage usa pdftotext (poppler) com -f/-l
+      para extrair APENAS a página solicitada, sem carregar o PDF inteiro
+- [x] Logs detalhados adicionados ao OCR para facilitar diagnóstico futuro
+- [x] 49 testes passando
