@@ -131,3 +131,8 @@
 - [x] Corrigido: classificações manuais do frontend agora são enviadas ao backend no payload do process
 - [x] Backend usa classificações do frontend com prioridade sobre as do banco
 - [x] 49 testes passando
+
+## Bug: Seleção manual de páginas não funciona no Review.tsx
+- [x] Corrigido: o canvas do PDF.js não propagava cliques para o card pai
+- [x] Solução: overlay transparente (z-20) sobre o preview captura o clique e chama onToggleSelect
+- [x] Botão de zoom elevado para z-30 para ficar acima do overlay

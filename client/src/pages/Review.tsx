@@ -533,9 +533,9 @@ function PageCard({ page, pdfData, imgUrl, onToggleSelect, onSetType, onZoom }: 
         )}
       </div>
 
-      {/* Zoom button */}
+      {/* Zoom button — z-30 para ficar acima do overlay de seleção (z-20) */}
       <button
-        className="absolute bottom-14 right-2 z-10 bg-white/90 hover:bg-white text-slate-600 rounded-full p-1 shadow opacity-0 group-hover:opacity-100 transition-opacity"
+        className="absolute bottom-14 right-2 z-30 bg-white/90 hover:bg-white text-slate-600 rounded-full p-1 shadow opacity-0 group-hover:opacity-100 transition-opacity"
         onClick={(e) => {
           e.stopPropagation();
           onZoom();
@@ -545,11 +545,16 @@ function PageCard({ page, pdfData, imgUrl, onToggleSelect, onSetType, onZoom }: 
         <ZoomIn className="w-4 h-4" />
       </button>
 
-      {/* Preview */}
-      <div
-        className="bg-slate-100 min-h-[180px] flex items-center justify-center"
-        onClick={(e) => e.stopPropagation()}
-      >
+      {/* Preview com overlay transparente para capturar cliques e alternar seleção */}
+      <div className="relative bg-slate-100 min-h-[180px] flex items-center justify-center">
+        {/* Overlay invisível sobre o canvas — garante que o clique sempre chega ao toggleSelect */}
+        <div
+          className="absolute inset-0 z-20 cursor-pointer"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleSelect();
+          }}
+        />
         {pdfData ? (
           <PdfPageCanvas pdfData={pdfData} pageNumber={page.pageNumber} width={180} />
         ) : imgUrl ? (
