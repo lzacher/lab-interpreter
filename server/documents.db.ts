@@ -80,7 +80,19 @@ export async function updatePageExtractedText(pageId: number, text: string) {
   if (!db) return;
   await db
     .update(documentPages)
-    .set({ extractedText: text, selectedForProcessing: 1 })
+    .set({ extractedText: text, selectedForProcessing: 1, ocrStatus: "done" })
+    .where(eq(documentPages.id, pageId));
+}
+
+export async function updatePageOcrStatus(
+  pageId: number,
+  status: "pending" | "processing" | "done" | "error"
+) {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .update(documentPages)
+    .set({ ocrStatus: status })
     .where(eq(documentPages.id, pageId));
 }
 

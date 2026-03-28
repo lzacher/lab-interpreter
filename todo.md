@@ -167,3 +167,13 @@
 - [x] Removidos todos os imports de child_process, execFile, os do classifier.ts
 - [x] classifier.ts v2.0: 100% Node.js, sem dependência de binários do sistema
 - [x] TypeScript: 0 erros | 49 testes passando
+
+## Feature: Indicador de progresso do OCR
+- [x] Backend: campo ocrStatus adicionado à tabela document_pages (pending/processing/done/error)
+- [x] Backend: procedure getProgress retorna status de cada página + contadores done/total
+- [x] Backend: extractTextFromPages atualiza ocrStatus via callback onPageProgress
+- [x] Frontend: overlay de processamento com lista de páginas e status em tempo real
+- [x] Frontend: polling automático a cada 1.5s via trpc.documents.getProgress
+- [x] Frontend: barra de progresso geral (X de Y páginas concluídas, %)
+- [x] Frontend: ícones visuais por status (○ aguardando, spinner lendo, ✓ concluído, ⚠ erro)
+- [x] 49 testes passando

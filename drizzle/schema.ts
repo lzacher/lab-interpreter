@@ -64,6 +64,7 @@ export const documentPages = mysqlTable("document_pages", {
   ),
   classificationScore: int("classificationScore").default(0),
   selectedForProcessing: int("selectedForProcessing").default(0), // 0 or 1
+  ocrStatus: mysqlEnum("ocrStatus", ["pending", "processing", "done", "error"]).default("pending"),
   extractedText: text("extractedText"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });

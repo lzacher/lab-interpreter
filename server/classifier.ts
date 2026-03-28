@@ -412,7 +412,8 @@ export async function analyzeDocument(filePath: string): Promise<AnalyzeResult> 
 
 export async function extractTextFromPages(
   filePath: string,
-  selectedPageNumbers: number[]
+  selectedPageNumbers: number[],
+  onPageProgress?: (pageNum: number, status: "processing" | "done" | "error") => Promise<void>
 ): Promise<OcrResult> {
   const ext = path.extname(filePath).toLowerCase();
   const results: OcrPage[] = [];
@@ -424,46 +425,62 @@ export async function extractTextFromPages(
 
     for (const pageNum of selectedPageNumbers) {
       console.log(`[OCR] Processando página ${pageNum}...`);
+      if (onPageProgress) await onPageProgress(pageNum, "processing");
 
-      // 1ª tentativa: pdfjs-dist — extrai texto nativo da página (100% Node.js)
-      const nativeText = await extractNativeTextSinglePage(fileBuffer, pageNum);
-      console.log(`[OCR] Página ${pageNum} — texto nativo (pdfjs): ${nativeText.length} chars`);
+      try {
+        // 1ª tentativa: pdfjs-dist — extrai texto nativo da página (100% Node.js)
+        const nativeText = await extractNativeTextSinglePage(fileBuffer, pageNum);
+        console.log(`[OCR] Página ${pageNum} — texto nativo (pdfjs): ${nativeText.length} chars`);
 
-      if (nativeText.length > 50) {
-        results.push({ pageNumber: pageNum, text: nativeText, charCount: nativeText.length });
-        console.log(`[OCR] Página ${pageNum} — OK via pdfjs texto nativo`);
-      } else {
-        // 2ª tentativa: PDF escaneado — renderizar com pdfjs+canvas e enviar ao LLM
-        console.log(`[OCR] Página ${pageNum} — texto insuficiente, renderizando via pdfjs+canvas...`);
-        const pageImageBuffer = await renderPdfPageToJpeg(fileBuffer, pageNum);
-
-        if (pageImageBuffer) {
-          console.log(`[OCR] Página ${pageNum} — imagem: ${pageImageBuffer.length} bytes, enviando ao LLM...`);
-          const resizedBuffer = await sharp(pageImageBuffer)
-            .resize(1400, 1960, { fit: "inside", withoutEnlargement: true })
-            .jpeg({ quality: 88 })
-            .toBuffer();
-          const imageBase64 = resizedBuffer.toString("base64");
-          const extractedText = await extractTextWithLLM(imageBase64);
-          console.log(`[OCR] Página ${pageNum} — LLM retornou: ${extractedText.length} chars`);
-          results.push({ pageNumber: pageNum, text: extractedText, charCount: extractedText.length });
+        if (nativeText.length > 50) {
+          results.push({ pageNumber: pageNum, text: nativeText, charCount: nativeText.length });
+          console.log(`[OCR] Página ${pageNum} — OK via pdfjs texto nativo`);
         } else {
-          console.error(`[OCR] Página ${pageNum} — FALHA: renderização não gerou imagem`);
-          results.push({ pageNumber: pageNum, text: "", charCount: 0 });
+          // 2ª tentativa: PDF escaneado — renderizar com pdfjs+canvas e enviar ao LLM
+          console.log(`[OCR] Página ${pageNum} — texto insuficiente, renderizando via pdfjs+canvas...`);
+          const pageImageBuffer = await renderPdfPageToJpeg(fileBuffer, pageNum);
+
+          if (pageImageBuffer) {
+            console.log(`[OCR] Página ${pageNum} — imagem: ${pageImageBuffer.length} bytes, enviando ao LLM...`);
+            const resizedBuffer = await sharp(pageImageBuffer)
+              .resize(1400, 1960, { fit: "inside", withoutEnlargement: true })
+              .jpeg({ quality: 88 })
+              .toBuffer();
+            const imageBase64 = resizedBuffer.toString("base64");
+            const extractedText = await extractTextWithLLM(imageBase64);
+            console.log(`[OCR] Página ${pageNum} — LLM retornou: ${extractedText.length} chars`);
+            results.push({ pageNumber: pageNum, text: extractedText, charCount: extractedText.length });
+          } else {
+            console.error(`[OCR] Página ${pageNum} — FALHA: renderização não gerou imagem`);
+            results.push({ pageNumber: pageNum, text: "", charCount: 0 });
+          }
         }
+        if (onPageProgress) await onPageProgress(pageNum, "done");
+      } catch (pageErr) {
+        console.error(`[OCR] Página ${pageNum} — ERRO:`, pageErr);
+        if (onPageProgress) await onPageProgress(pageNum, "error");
+        results.push({ pageNumber: pageNum, text: "", charCount: 0 });
       }
     }
   } else if ([".jpg", ".jpeg", ".png"].includes(ext)) {
     console.log(`[OCR] Processando imagem diretamente via LLM...`);
-    const imageBuffer = fs.readFileSync(filePath);
-    const resizedBuffer = await sharp(imageBuffer)
-      .resize(1400, 1960, { fit: "inside", withoutEnlargement: true })
-      .jpeg({ quality: 88 })
-      .toBuffer();
-    const imageBase64 = resizedBuffer.toString("base64");
-    const extractedText = await extractTextWithLLM(imageBase64);
-    console.log(`[OCR] Imagem — LLM retornou: ${extractedText.length} chars`);
-    results.push({ pageNumber: 1, text: extractedText, charCount: extractedText.length });
+    if (onPageProgress) await onPageProgress(1, "processing");
+    try {
+      const imageBuffer = fs.readFileSync(filePath);
+      const resizedBuffer = await sharp(imageBuffer)
+        .resize(1400, 1960, { fit: "inside", withoutEnlargement: true })
+        .jpeg({ quality: 88 })
+        .toBuffer();
+      const imageBase64 = resizedBuffer.toString("base64");
+      const extractedText = await extractTextWithLLM(imageBase64);
+      console.log(`[OCR] Imagem — LLM retornou: ${extractedText.length} chars`);
+      results.push({ pageNumber: 1, text: extractedText, charCount: extractedText.length });
+      if (onPageProgress) await onPageProgress(1, "done");
+    } catch (imgErr) {
+      console.error(`[OCR] Imagem — ERRO:`, imgErr);
+      if (onPageProgress) await onPageProgress(1, "error");
+      results.push({ pageNumber: 1, text: "", charCount: 0 });
+    }
   }
 
   const totalChars = results.reduce((s, p) => s + p.charCount, 0);

@@ -19,6 +19,7 @@ import {
   upsertDocumentPage,
   getPagesByDocument,
   updatePageExtractedText,
+  updatePageOcrStatus,
   updatePageClassification,
   createImagingReport,
 } from "../documents.db";
@@ -140,6 +141,35 @@ export const documentsRouter = router({
       return { success: true };
     }),
 
+  // ── Get progress (polling) ──────────────────────────────────────────────────
+  getProgress: protectedProcedure
+    .input(z.object({ documentId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const doc = await getDocumentById(input.documentId);
+      if (!doc || doc.userId !== ctx.user.id) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Documento não encontrado." });
+      }
+      const pages = await getPagesByDocument(input.documentId);
+      const selectedPages = pages.filter((p) => p.selectedForProcessing === 1);
+      const total = selectedPages.length;
+      const done = selectedPages.filter((p) => p.ocrStatus === "done").length;
+      const error = selectedPages.filter((p) => p.ocrStatus === "error").length;
+      const processing = selectedPages.filter((p) => p.ocrStatus === "processing").length;
+
+      return {
+        documentStatus: doc.status,
+        total,
+        done,
+        error,
+        processing,
+        pending: total - done - error - processing,
+        pages: selectedPages.map((p) => ({
+          pageNumber: p.pageNumber,
+          ocrStatus: p.ocrStatus ?? "pending",
+        })),
+      };
+    }),
+
   // ── Process: OCR → JSON estruturado → salvar resultado ─────────────────────
   process: protectedProcedure
     .input(
@@ -170,11 +200,26 @@ export const documentsRouter = router({
         const buffer = Buffer.from(await res.arrayBuffer());
         fs.writeFileSync(tmpFile, buffer);
 
-        // OCR das páginas selecionadas
-        const ocrResult = await extractTextFromPages(tmpFile, input.selectedPageNumbers);
-
-        // Salvar texto extraído por página
+        // Marcar páginas selecionadas como "pending" antes de iniciar o OCR
         const savedPages = await getPagesByDocument(input.documentId);
+        for (const pageNum of input.selectedPageNumbers) {
+          const dbPage = savedPages.find((p) => p.pageNumber === pageNum);
+          if (dbPage) {
+            await updatePageOcrStatus(dbPage.id, "pending");
+          }
+        }
+
+        // OCR das páginas selecionadas — com atualização de status por página
+        const ocrResult = await extractTextFromPages(
+          tmpFile,
+          input.selectedPageNumbers,
+          async (pageNum, status) => {
+            const dbPage = savedPages.find((p) => p.pageNumber === pageNum);
+            if (dbPage) await updatePageOcrStatus(dbPage.id, status);
+          }
+        );
+
+        // Salvar texto extraído por página (ocrStatus já é "done" via updatePageExtractedText)
         for (const ocrPage of ocrResult.pages) {
           const dbPage = savedPages.find((p) => p.pageNumber === ocrPage.pageNumber);
           if (dbPage) {
@@ -189,12 +234,10 @@ export const documentsRouter = router({
         // Prioridade 1: classificações enviadas pelo frontend (estado atual da UI)
         // Prioridade 2: classificações salvas no banco (fallback)
         const classifications = input.selectedPageNumbers.map((pageNum) => {
-          // Tentar usar classificação do frontend primeiro
           if (input.pageClassifications) {
             const frontendClass = input.pageClassifications[String(pageNum)];
             if (frontendClass) return frontendClass as "laudo" | "imagem" | "indefinido";
           }
-          // Fallback: usar classificação do banco
           const dbPage = savedPages.find((p) => p.pageNumber === pageNum);
           return (dbPage?.classification ?? "indefinido") as "laudo" | "imagem" | "indefinido";
         });
@@ -209,11 +252,9 @@ export const documentsRouter = router({
         let fileName: string;
 
         if (docType === "lab") {
-          // Extrair JSON de laboratório
           const labData = await extractLabJson(fullText, fileBaseName);
           fileName = generateFileName(labData.paciente_nome || fileBaseName, "lab");
 
-          // Salvar no banco como exam_session + exams
           const db = await getDb();
           if (!db) throw new Error("Database not available");
 
@@ -239,7 +280,6 @@ export const documentsRouter = router({
           resultId = sessionId;
           resultType = "lab";
 
-          // Inserir exames individuais
           if (labData.exames && labData.exames.length > 0) {
             for (const exam of labData.exames) {
               await db.insert(exams).values({
@@ -253,7 +293,6 @@ export const documentsRouter = router({
             }
           }
         } else {
-          // Extrair JSON de imagem
           const imagingData = await extractImagingJson(fullText, fileBaseName);
           fileName = generateFileName(
             imagingData.paciente_nome || fileBaseName,

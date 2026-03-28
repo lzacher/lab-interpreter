@@ -128,10 +128,39 @@ export default function ReviewPage() {
   // Processing state
   const [processing, setProcessing] = useState(false);
   const [processingStep, setProcessingStep] = useState("");
+  const [pageProgress, setPageProgress] = useState<Record<number, "pending" | "processing" | "done" | "error">>({});
+  const [pollingEnabled, setPollingEnabled] = useState(false);
 
   const processMutation = trpc.documents.process.useMutation();
   const analyzeMutation = trpc.documents.analyze.useMutation();
   const utils = trpc.useUtils();
+
+  // Polling: busca progresso a cada 1.5s enquanto processando
+  const { data: progressData } = trpc.documents.getProgress.useQuery(
+    { documentId },
+    {
+      enabled: pollingEnabled && !!documentId,
+      refetchInterval: 1500,
+      refetchIntervalInBackground: true,
+    }
+  );
+
+  useEffect(() => {
+    if (!progressData || !pollingEnabled) return;
+    const newProgress: Record<number, "pending" | "processing" | "done" | "error"> = {};
+    for (const p of progressData.pages) {
+      newProgress[p.pageNumber] = (p.ocrStatus ?? "pending") as any;
+    }
+    setPageProgress(newProgress);
+    const currentPage = progressData.pages.find((p) => p.ocrStatus === "processing");
+    if (currentPage) {
+      setProcessingStep(`Lendo página ${currentPage.pageNumber} de ${progressData.total}…`);
+    } else if (progressData.done > 0 && progressData.done < progressData.total) {
+      setProcessingStep(`Estruturando dados… (${progressData.done}/${progressData.total} páginas)`);
+    } else if (progressData.done === progressData.total && progressData.total > 0) {
+      setProcessingStep("Gerando resultado…");
+    }
+  }, [progressData, pollingEnabled]);
 
   // ─── Auto-analyze: se o documento ainda não tem páginas no banco, chamar analyze ──
   useEffect(() => {
@@ -247,12 +276,16 @@ export default function ReviewPage() {
       toast.error("Selecione pelo menos uma página para processar.");
       return;
     }
+    // Inicializar progresso como "pending" para todas as páginas selecionadas
+    const initialProgress: Record<number, "pending" | "processing" | "done" | "error"> = {};
+    for (const p of selected) initialProgress[p.pageNumber] = "pending";
+    setPageProgress(initialProgress);
     setProcessing(true);
-    setProcessingStep("Extraindo texto e estruturando dados…");
+    setProcessingStep(`Iniciando OCR de ${selected.length} página(s)…`);
+    setPollingEnabled(true);
 
     try {
       // Montar mapa de classificações de TODAS as páginas para o backend
-      // O backend usa isso para determinar o tipo correto do documento
       const pageClassifications: Record<string, "laudo" | "imagem" | "indefinido"> = {};
       for (const p of pages) {
         pageClassifications[String(p.pageNumber)] = p.type;
@@ -264,6 +297,7 @@ export default function ReviewPage() {
         pageClassifications,
       });
 
+      setPollingEnabled(false);
       if (result.resultType === "lab") {
         navigate(`/analysis/${result.resultId}`);
       } else {
@@ -272,8 +306,10 @@ export default function ReviewPage() {
     } catch (err: any) {
       console.error("[Review] process error:", err);
       toast.error(err?.message || "Erro ao processar o documento.");
+      setPollingEnabled(false);
       setProcessing(false);
       setProcessingStep("");
+      setPageProgress({});
     }
   }
 
@@ -539,12 +575,77 @@ export default function ReviewPage() {
         </div>
       )}
 
-      {/* Processing overlay */}
+      {/* Processing overlay com progresso por página */}
       {processing && (
-        <div className="fixed inset-0 bg-white/85 backdrop-blur-sm z-50 flex flex-col items-center justify-center gap-4">
-          <Loader2 className="w-10 h-10 animate-spin text-blue-500" />
-          <p className="text-slate-700 font-semibold">Processando documento…</p>
-          <p className="text-slate-500 text-sm">{processingStep}</p>
+        <div className="fixed inset-0 bg-white/90 backdrop-blur-sm z-50 flex flex-col items-center justify-center gap-6 px-4">
+          <div className="flex flex-col items-center gap-2">
+            <Loader2 className="w-10 h-10 animate-spin text-blue-500" />
+            <p className="text-slate-800 font-semibold text-lg">Processando documento…</p>
+            <p className="text-slate-500 text-sm text-center">{processingStep}</p>
+          </div>
+
+          {/* Lista de progresso por página */}
+          {Object.keys(pageProgress).length > 0 && (
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm w-full max-w-sm overflow-hidden">
+              <div className="px-4 py-2 border-b border-slate-100 bg-slate-50">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Status do OCR por página</p>
+              </div>
+              <ul className="divide-y divide-slate-100 max-h-64 overflow-y-auto">
+                {Object.entries(pageProgress)
+                  .sort(([a], [b]) => Number(a) - Number(b))
+                  .map(([pageNum, status]) => (
+                    <li key={pageNum} className="flex items-center gap-3 px-4 py-2.5">
+                      {status === "processing" && (
+                        <Loader2 className="w-4 h-4 animate-spin text-blue-500 shrink-0" />
+                      )}
+                      {status === "done" && (
+                        <CheckCheck className="w-4 h-4 text-emerald-500 shrink-0" />
+                      )}
+                      {status === "pending" && (
+                        <div className="w-4 h-4 rounded-full border-2 border-slate-300 shrink-0" />
+                      )}
+                      {status === "error" && (
+                        <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+                      )}
+                      <span className="text-sm text-slate-700">
+                        Página {pageNum}
+                      </span>
+                      <span className={`ml-auto text-xs font-medium ${
+                        status === "processing" ? "text-blue-600" :
+                        status === "done" ? "text-emerald-600" :
+                        status === "error" ? "text-red-600" :
+                        "text-slate-400"
+                      }`}>
+                        {status === "processing" ? "Lendo…" :
+                         status === "done" ? "Concluído" :
+                         status === "error" ? "Erro" :
+                         "Aguardando"}
+                      </span>
+                    </li>
+                  ))}
+              </ul>
+              {/* Barra de progresso geral */}
+              {(() => {
+                const total = Object.keys(pageProgress).length;
+                const done = Object.values(pageProgress).filter((s) => s === "done" || s === "error").length;
+                const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+                return (
+                  <div className="px-4 py-2 border-t border-slate-100 bg-slate-50">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-slate-500">{done} de {total} páginas</span>
+                      <span className="text-xs font-semibold text-blue-600">{pct}%</span>
+                    </div>
+                    <div className="w-full bg-slate-200 rounded-full h-1.5">
+                      <div
+                        className="bg-blue-500 h-1.5 rounded-full transition-all duration-500"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
         </div>
       )}
     </div>
