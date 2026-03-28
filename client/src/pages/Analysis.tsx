@@ -24,6 +24,7 @@ import {
   AlertTriangle,
   TrendingUp,
   TrendingDown,
+  Plus,
 } from "lucide-react";
 
 // Classifica o status do exame para destaque visual
@@ -264,6 +265,15 @@ export default function Analysis() {
             <span className="text-sm font-medium text-foreground truncate max-w-[160px] hidden sm:block">
               {session.patientName ?? "Paciente"}
             </span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => navigate("/")}
+              className="flex items-center gap-1.5 text-blue-700 border-blue-200 hover:bg-blue-50"
+            >
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">Novo Exame</span>
+            </Button>
             <Button
               size="sm"
               variant="outline"

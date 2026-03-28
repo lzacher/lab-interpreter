@@ -12,6 +12,7 @@ import {
   Stethoscope,
   FileText,
   History,
+  Plus,
 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -180,6 +181,15 @@ export default function ImagingResult() {
           <Button variant="ghost" size="sm" onClick={() => navigate("/history")} className="gap-1.5 text-slate-600">
             <History className="h-4 w-4" />
             Histórico
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate("/")}
+            className="gap-1.5 text-blue-700 border-blue-200 hover:bg-blue-50"
+          >
+            <Plus className="h-4 w-4" />
+            Novo Exame
           </Button>
           <Button onClick={exportPdf} className="bg-blue-700 hover:bg-blue-800 text-white gap-1.5">
             <Download className="h-4 w-4" />
