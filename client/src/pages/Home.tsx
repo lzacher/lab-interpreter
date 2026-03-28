@@ -20,6 +20,53 @@ import {
 const ACCEPTED = ["application/pdf", "image/jpeg", "image/jpg"];
 const ACCEPTED_EXT = [".pdf", ".jpg", ".jpeg"];
 
+/**
+ * Verifica heuristicamente se uma imagem parece ser um laudo médico.
+ * Analisa: proporção (laudos são geralmente retrato/A4), predominância de pixels brancos
+ * (fundo branco de documento), e tamanho do arquivo (laudos tendem a ser maiores).
+ * Retorna true se provavelmente é um laudo, false se parece screenshot/foto.
+ */
+async function checkIfMedicalImage(file: File): Promise<boolean> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const { width, height } = img;
+      // Laudos médicos têm proporção retrato (altura > largura) ou próxima de A4 (1.41)
+      const ratio = height / width;
+      const isPortrait = ratio > 1.0;
+      // Screenshots de celular têm proporção muito alta (ex: 19:9 = ~2.1)
+      const isMobileScreenshot = ratio > 1.8;
+      // Verificar predominância de branco (fundo de documento)
+      const canvas = document.createElement("canvas");
+      const sampleSize = 100;
+      canvas.width = sampleSize;
+      canvas.height = sampleSize;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { resolve(true); return; }
+      ctx.drawImage(img, 0, 0, sampleSize, sampleSize);
+      const data = ctx.getImageData(0, 0, sampleSize, sampleSize).data;
+      let lightPixels = 0;
+      const totalPixels = sampleSize * sampleSize;
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i], g = data[i + 1], b = data[i + 2];
+        // Pixel claro: todos os canais > 200 (branco/cinza claro)
+        if (r > 200 && g > 200 && b > 200) lightPixels++;
+      }
+      const lightRatio = lightPixels / totalPixels;
+      // Laudo: fundo predominantemente branco (>50%) E proporção retrato
+      // Screenshot de celular: proporção muito alta E fundo escuro
+      const looksLikeDocument = lightRatio > 0.45 && isPortrait;
+      const looksLikeMobileScreenshot = isMobileScreenshot && lightRatio < 0.6;
+      if (looksLikeMobileScreenshot) { resolve(false); return; }
+      resolve(looksLikeDocument);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(true); };
+    img.src = url;
+  });
+}
+
 type UploadStep = "idle" | "uploading" | "analyzing" | "done";
 
 const STEP_LABELS: Record<UploadStep, string> = {
@@ -98,6 +145,17 @@ export default function Home() {
       if (file.size > 20 * 1024 * 1024) {
         toast.error("Arquivo muito grande. Tamanho máximo: 20 MB.");
         return;
+      }
+
+      // Validação prévia para imagens JPG/JPEG: verificar se parece um laudo médico
+      if ((file.type === "image/jpeg" || file.type === "image/jpg" || ext === "jpg" || ext === "jpeg") && file.size < 5 * 1024 * 1024) {
+        const isLikelyMedical = await checkIfMedicalImage(file);
+        if (!isLikelyMedical) {
+          toast.warning(
+            "Esta imagem pode não ser um laudo médico (screenshot, foto, etc.). O processamento continuará, mas talvez nenhum exame seja encontrado.",
+            { duration: 6000 }
+          );
+        }
       }
 
       setStep("uploading");

@@ -326,6 +326,10 @@ export default function ReviewPage() {
   const selectedCount = pages.filter((p) => p.selected).length;
   const isPdf = docData?.document?.fileType?.toLowerCase() === "pdf";
   const fileName = docData?.document?.originalName ?? "Documento";
+  // Detectar se todas as páginas selecionadas são indefinidas
+  const selectedPages = pages.filter((p) => p.selected);
+  const allSelectedIndefinido =
+    selectedPages.length > 0 && selectedPages.every((p) => p.type === "indefinido");
 
   if (!documentId || isNaN(documentId)) {
     return (
@@ -455,6 +459,21 @@ export default function ReviewPage() {
       </main>
 
       {/* Bottom action bar */}
+      {/* Aviso de páginas indefinidas */}
+      {allSelectedIndefinido && (
+        <div className="fixed bottom-16 left-0 right-0 z-20 px-4 pb-1">
+          <div className="max-w-2xl mx-auto bg-amber-50 border border-amber-300 rounded-lg px-4 py-2.5 flex items-start gap-2 shadow-sm">
+            <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-amber-800">
+              <strong>Atenção:</strong> todas as páginas selecionadas estão classificadas como{" "}
+              <strong>Indefinido</strong>. O sistema tentará extrair exames laboratoriais, mas
+              provavelmente não encontrará dados. Classifique as páginas como{" "}
+              <strong>Laboratório</strong> ou <strong>Imagem diagnóstica</strong> para melhores
+              resultados.
+            </p>
+          </div>
+        </div>
+      )}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-3 flex items-center justify-between gap-4 z-20 shadow-lg">
         <p className="text-sm text-slate-500">
           <span className="font-semibold text-slate-700">{selectedCount}</span> de {totalPages}{" "}
