@@ -1,0 +1,8 @@
+{
+  "query": "SELECT documentId, pageNumber, classification, score FROM document_pages WHERE documentId >= 150007 ORDER BY documentId, pageNumber;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sWoaWTPntxGbWh.2ac340c65fe1 --database SYJ8HnCW4cDbQBB8KzYoKX --execute SELECT documentId, pageNumber, classification, score FROM document_pages WHERE documentId >= 150007 ORDER BY documentId, pageNumber;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'score' in 'field list'"
+  ]
+}

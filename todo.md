@@ -150,3 +150,12 @@
 - [x] Classificação automática do LLM (feita durante o upload) é exibida corretamente na tela de revisão
 - [x] Laudo de imagem agora é detectado como "imagem" sem intervenção manual do usuário
 - [x] 49 testes passando
+
+## Bug: Laudo de Mamografia não extrai dados em nenhuma classificação
+- [x] Causa raiz encontrada: o procedure `analyze` NUNCA era chamado após o upload
+      O Home.tsx navegava direto para /review sem chamar analyze, então totalPages=0 e
+      document_pages ficava vazio — o OCR não tinha páginas para processar
+- [x] Correção: Review.tsx agora chama analyze automaticamente ao carregar se não há páginas no banco
+- [x] Banner amarelo exibido durante a classificação automática ("Classificando páginas...")
+- [x] Botão Processar desabilitado enquanto analyze está em andamento
+- [x] 49 testes passando

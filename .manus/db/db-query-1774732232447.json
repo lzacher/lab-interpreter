@@ -1,0 +1,100 @@
+{
+  "query": "SELECT id, originalName, fileType, fileUrl, status, totalPages, createdAt FROM documents ORDER BY id DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sWoaWTPntxGbWh.2ac340c65fe1 --database SYJ8HnCW4cDbQBB8KzYoKX --execute SELECT id, originalName, fileType, fileUrl, status, totalPages, createdAt FROM documents ORDER BY id DESC LIMIT 10;",
+  "rows": [
+    {
+      "id": "150010",
+      "originalName": "Laudo Mamografia.pdf",
+      "fileType": "pdf",
+      "fileUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663077923731/SYJ8HnCW4cDbQBB8KzYoKX/medsuite/1/wng42tpwcj-Laudo Mamografia.pdf",
+      "status": "done",
+      "totalPages": "0",
+      "createdAt": "2026-03-28 21:06:48"
+    },
+    {
+      "id": "150009",
+      "originalName": "Laudo Mamografia.pdf",
+      "fileType": "pdf",
+      "fileUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663077923731/SYJ8HnCW4cDbQBB8KzYoKX/medsuite/1/5hlho6uht5-Laudo Mamografia.pdf",
+      "status": "done",
+      "totalPages": "0",
+      "createdAt": "2026-03-28 21:06:14"
+    },
+    {
+      "id": "150008",
+      "originalName": "Laudo Mamografia.pdf",
+      "fileType": "pdf",
+      "fileUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663077923731/SYJ8HnCW4cDbQBB8KzYoKX/medsuite/1/js9c6gm7a3-Laudo Mamografia.pdf",
+      "status": "done",
+      "totalPages": "0",
+      "createdAt": "2026-03-28 21:05:46"
+    },
+    {
+      "id": "150007",
+      "originalName": "Laudo Mamografia.pdf",
+      "fileType": "pdf",
+      "fileUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663077923731/SYJ8HnCW4cDbQBB8KzYoKX/medsuite/1/vedrmv6261-Laudo Mamografia.pdf",
+      "status": "done",
+      "totalPages": "0",
+      "createdAt": "2026-03-28 21:04:59"
+    },
+    {
+      "id": "150006",
+      "originalName": "RM Exame-Carlos.pdf",
+      "fileType": "pdf",
+      "fileUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663077923731/SYJ8HnCW4cDbQBB8KzYoKX/medsuite/1/0vu167oyja-RM Exame-Carlos.pdf",
+      "status": "done",
+      "totalPages": "0",
+      "createdAt": "2026-03-28 21:04:14"
+    },
+    {
+      "id": "150005",
+      "originalName": "carlos_imagem.pdf",
+      "fileType": "pdf",
+      "fileUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663077923731/SYJ8HnCW4cDbQBB8KzYoKX/medsuite/1/qmkdmq4z8e-carlos_imagem.pdf",
+      "status": "uploaded",
+      "totalPages": "0",
+      "createdAt": "2026-03-28 21:03:57"
+    },
+    {
+      "id": "150004",
+      "originalName": "photo-output.jpg",
+      "fileType": "jpg",
+      "fileUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663077923731/SYJ8HnCW4cDbQBB8KzYoKX/medsuite/1/jdajygnezp-photo-output.jpg",
+      "status": "uploaded",
+      "totalPages": "0",
+      "createdAt": "2026-03-28 21:02:29"
+    },
+    {
+      "id": "150003",
+      "originalName": "guilherme_imagem.pdf",
+      "fileType": "pdf",
+      "fileUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663077923731/SYJ8HnCW4cDbQBB8KzYoKX/medsuite/1/e1yb7529lz-guilherme_imagem.pdf",
+      "status": "uploaded",
+      "totalPages": "0",
+      "createdAt": "2026-03-28 21:01:51"
+    },
+    {
+      "id": "150002",
+      "originalName": "laude_rm_prostata_sem_imagens_ (1).pdf",
+      "fileType": "pdf",
+      "fileUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663077923731/SYJ8HnCW4cDbQBB8KzYoKX/medsuite/1/foeikqvg0j-laude_rm_prostata_sem_imagens_ (1).pdf",
+      "status": "uploaded",
+      "totalPages": "0",
+      "createdAt": "2026-03-28 21:01:27"
+    },
+    {
+      "id": "150001",
+      "originalName": "carlos_imagem.pdf",
+      "fileType": "pdf",
+      "fileUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663077923731/SYJ8HnCW4cDbQBB8KzYoKX/medsuite/1/j6p422se09-carlos_imagem.pdf",
+      "status": "done",
+      "totalPages": "0",
+      "createdAt": "2026-03-28 20:52:52"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\toriginalName\tfileType\tfileUrl\tstatus\ttotalPages\tcreatedAt\n150010\tLaudo Mamografia.pdf\tpdf\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663077923731/SYJ8HnCW4cDbQBB8KzYoKX/medsuite/1/wng42tpwcj-Laudo Mamografia.pdf\tdone\t0\t2026-03-28 21:06:48\n150009\tLaudo Mamografia.pdf\tpdf\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663077923731/SYJ8HnCW4cDbQBB8KzYoKX/medsuite/1/5hlho6uht5-Laudo Mamografia.pdf\tdone\t0\t2026-03-28 21:06:14\n150008\tLaudo Mamografia.pdf\tpdf\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663077923731/SYJ8HnCW4cDbQBB8KzYoKX/medsuite/1/js9c6gm7a3-Laudo Mamografia.pdf\tdone\t0\t2026-03-28 21:05:46\n150007\tLaudo Mamografia.pdf\tpdf\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663077923731/SYJ8HnCW4cDbQBB8KzYoKX/medsuite/1/vedrmv6261-Laudo Mamografia.pdf\tdone\t0\t2026-03-28 21:04:59\n150006\tRM Exame-Carlos.pdf\tpdf\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663077923731/SYJ8HnCW4cDbQBB8KzYoKX/medsuite/1/0vu167oyja-RM Exame-Carlos.pdf\tdone\t0\t2026-03-28 21:04:14\n150005\tcarlos_imagem.pdf\tpdf\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663077923731/SYJ8HnCW4cDbQBB8KzYoKX/medsuite/1/qmkdmq4z8e-carlos_imagem.pdf\tuploaded\t0\t2026-03-28 21:03:57\n150004\tphoto-output.jpg\tjpg\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663077923731/SYJ8HnCW4cDbQBB8KzYoKX/medsuite/1/jdajygnezp-photo-output.jpg\tuploaded\t0\t2026-03-28 21:02:29\n150003\tguilherme_imagem.pdf\tpdf\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663077923731/SYJ8HnCW4cDbQBB8KzYoKX/medsuite/1/e1yb7529lz-guilherme_imagem.pdf\tuploaded\t0\t2026-03-28 21:01:51\n150002\tlaude_rm_prostata_sem_imagens_ (1).pdf\tpdf\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663077923731/SYJ8HnCW4cDbQBB8KzYoKX/medsuite/1/foeikqvg0j-laude_rm_prostata_sem_imagens_ (1).pdf\tuploaded\t0\t2026-03-28 21:01:27\n150001\tcarlos_imagem.pdf\tpdf\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663077923731/SYJ8HnCW4cDbQBB8KzYoKX/medsuite/1/j6p422se09-carlos_imagem.pdf\tdone\t0\t2026-03-28 20:52:52\n",
+  "stderr": "",
+  "execution_time_ms": 57
+}

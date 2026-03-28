@@ -130,6 +130,32 @@ export default function ReviewPage() {
   const [processingStep, setProcessingStep] = useState("");
 
   const processMutation = trpc.documents.process.useMutation();
+  const analyzeMutation = trpc.documents.analyze.useMutation();
+  const utils = trpc.useUtils();
+
+  // ─── Auto-analyze: se o documento ainda não tem páginas no banco, chamar analyze ──
+  useEffect(() => {
+    if (!docData) return;
+    const hasPages = (docData.pages?.length ?? 0) > 0;
+    const status = (docData.document as any)?.status;
+    // Se já tem páginas ou já está sendo analisado, não chamar novamente
+    if (hasPages || status === "analyzing") return;
+    // Chamar analyze automaticamente
+    analyzeMutation.mutate(
+      { documentId },
+      {
+        onSuccess: () => {
+          // Recarregar os dados do documento com as páginas classificadas
+          utils.documents.getDocument.invalidate({ documentId });
+        },
+        onError: (err) => {
+          console.error("[Review] analyze error:", err);
+          // Não bloquear o usuário — ele pode classificar manualmente
+        },
+      }
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [docData?.document?.id]);
 
   // ─── Load file from S3 URL ────────────────────────────────────────────────
   useEffect(() => {
@@ -295,6 +321,9 @@ export default function ReviewPage() {
     );
   }
 
+  // Banner de análise em andamento (classificando páginas via LLM)
+  const isAnalyzing = analyzeMutation.isPending;
+
   if (docError || fileLoadError) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -352,7 +381,16 @@ export default function ReviewPage() {
       </header>
 
       {/* Instruction banner */}
-      <div className="max-w-7xl mx-auto px-4 pt-4">
+      <div className="max-w-7xl mx-auto px-4 pt-4 flex flex-col gap-2">
+        {isAnalyzing && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-700 flex gap-2 items-center">
+            <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
+            <span>
+              <strong>Classificando páginas automaticamente…</strong> Aguarde enquanto o sistema
+              identifica o tipo de cada página. Você pode ajustar manualmente se necessário.
+            </span>
+          </div>
+        )}
         <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 text-sm text-blue-700 flex gap-2 items-start">
           <span className="font-bold mt-0.5">i</span>
           <span>
@@ -393,10 +431,15 @@ export default function ReviewPage() {
         </p>
         <Button
           onClick={handleProcess}
-          disabled={processing || selectedCount === 0}
+          disabled={processing || selectedCount === 0 || isAnalyzing}
           className="bg-blue-600 hover:bg-blue-700 text-white min-w-[200px]"
         >
-          {processing ? (
+          {isAnalyzing ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Classificando páginas…
+            </>
+          ) : processing ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               Processando…
