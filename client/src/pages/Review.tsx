@@ -156,12 +156,17 @@ export default function ReviewPage() {
           const pdf = await loadingTask.promise;
           const n = pdf.numPages;
           setTotalPages(n);
+          // Pré-preencher classificação com dados do banco (LLM classificou durante o upload)
+          const dbPages = docData?.pages ?? [];
           setPages(
-            Array.from({ length: n }, (_, i) => ({
-              pageNumber: i + 1,
-              type: "indefinido" as PageType,
-              selected: true,
-            }))
+            Array.from({ length: n }, (_, i) => {
+              const pageNum = i + 1;
+              const dbPage = dbPages.find((p: any) => p.pageNumber === pageNum);
+              const dbClass = dbPage?.classification as PageType | undefined;
+              const type: PageType =
+                dbClass === "laudo" || dbClass === "imagem" ? dbClass : "indefinido";
+              return { pageNumber: pageNum, type, selected: true };
+            })
           );
         } else {
           // Image file
@@ -169,7 +174,12 @@ export default function ReviewPage() {
           const url = URL.createObjectURL(blob);
           setImgObjectUrl(url);
           setTotalPages(1);
-          setPages([{ pageNumber: 1, type: "indefinido", selected: true }]);
+          // Pré-preencher classificação para imagem
+          const imgDbPage = docData?.pages?.find((p: any) => p.pageNumber === 1);
+          const imgClass = imgDbPage?.classification as PageType | undefined;
+          const imgType: PageType =
+            imgClass === "laudo" || imgClass === "imagem" ? imgClass : "indefinido";
+          setPages([{ pageNumber: 1, type: imgType, selected: true }]);
         }
       })
       .catch((err) => {

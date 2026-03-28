@@ -144,3 +144,9 @@
       para extrair APENAS a página solicitada, sem carregar o PDF inteiro
 - [x] Logs detalhados adicionados ao OCR para facilitar diagnóstico futuro
 - [x] 49 testes passando
+
+## Bug: Classificação de páginas não pré-preenchida com dados do banco
+- [x] Corrigido: Review.tsx agora usa docData.pages para pré-preencher type de cada página ao carregar
+- [x] Classificação automática do LLM (feita durante o upload) é exibida corretamente na tela de revisão
+- [x] Laudo de imagem agora é detectado como "imagem" sem intervenção manual do usuário
+- [x] 49 testes passando
