@@ -159,3 +159,11 @@
 - [x] Banner amarelo exibido durante a classificação automática ("Classificando páginas...")
 - [x] Botão Processar desabilitado enquanto analyze está em andamento
 - [x] 49 testes passando
+
+## Bug CRÍTICO CORRIGIDO: OCR não funcionava em produção — binários do sistema indisponíveis
+- [x] Causa raiz: pdftotext e pdftoppm (poppler-utils) usados no classifier.ts não existem em produção
+- [x] Substituir pdftotext por pdfjs-dist (Node.js puro) — função extractNativeTextSinglePage reescrita
+- [x] Substituir pdftoppm por pdfjs-dist + @napi-rs/canvas — função renderPdfPageToJpeg reescrita
+- [x] Removidos todos os imports de child_process, execFile, os do classifier.ts
+- [x] classifier.ts v2.0: 100% Node.js, sem dependência de binários do sistema
+- [x] TypeScript: 0 erros | 49 testes passando
