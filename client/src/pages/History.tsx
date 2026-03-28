@@ -63,8 +63,9 @@ export default function History() {
       refetchLab();
       refetchImaging();
       utils.documents.listDocuments.invalidate();
+      const total = (data as any).total ?? (data as any).deletedDocuments ?? 0;
       toast.success(
-        `Histórico limpo com sucesso. ${data.deletedDocuments} documento(s) removido(s).`
+        `Histórico limpo com sucesso. ${total} registro(s) removido(s).`
       );
     },
     onError: (err) => {

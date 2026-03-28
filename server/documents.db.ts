@@ -4,6 +4,8 @@ import {
   documents,
   documentPages,
   imagingReports,
+  examSessions,
+  exams,
   InsertDocument,
   InsertDocumentPage,
   InsertImagingReport,
@@ -149,14 +151,13 @@ export async function deleteImagingReport(id: number, userId: number) {
 // ─── Clear all history for a user ─────────────────────────────────────────────
 export async function clearAllUserHistory(userId: number) {
   const db = await getDb();
-  if (!db) return { deletedDocuments: 0 };
+  if (!db) return { deletedDocuments: 0, deletedSessions: 0, deletedReports: 0, total: 0 };
 
-  // 1. Buscar todos os documentos do usuário
+  // 1. Buscar todos os documentos do usuário (pipeline MedSuite)
   const userDocs = await db
     .select({ id: documents.id })
     .from(documents)
     .where(eq(documents.userId, userId));
-
   const docIds = userDocs.map((d) => d.id);
 
   if (docIds.length > 0) {
@@ -168,8 +169,34 @@ export async function clearAllUserHistory(userId: number) {
     await db.delete(documents).where(eq(documents.userId, userId));
   }
 
-  // 4. Deletar imaging_reports do usuário
+  // 4. Buscar todas as sessões de exames de laboratório do usuário
+  const userSessions = await db
+    .select({ id: examSessions.id })
+    .from(examSessions)
+    .where(eq(examSessions.userId, userId));
+  const sessionIds = userSessions.map((s) => s.id);
+
+  if (sessionIds.length > 0) {
+    // 5. Deletar exames individuais de cada sessão
+    for (const sessionId of sessionIds) {
+      await db.delete(exams).where(eq(exams.sessionId, sessionId));
+    }
+    // 6. Deletar as sessões de exames
+    await db.delete(examSessions).where(eq(examSessions.userId, userId));
+  }
+
+  // 7. Buscar e deletar laudos de imagem do usuário
+  const userReports = await db
+    .select({ id: imagingReports.id })
+    .from(imagingReports)
+    .where(eq(imagingReports.userId, userId));
   await db.delete(imagingReports).where(eq(imagingReports.userId, userId));
 
-  return { deletedDocuments: docIds.length };
+  const total = docIds.length + sessionIds.length + userReports.length;
+  return {
+    deletedDocuments: docIds.length,
+    deletedSessions: sessionIds.length,
+    deletedReports: userReports.length,
+    total,
+  };
 }
