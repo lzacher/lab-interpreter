@@ -184,3 +184,8 @@
 - [x] Review.tsx: banner amarelo removido — páginas já chegam classificadas
 - [x] Review.tsx: fallback silencioso mantido para documentos antigos sem páginas
 - [x] 49 testes passando
+
+## Feature: Limpar histórico
+- [ ] Backend: procedure clearHistory que exclui todos os documentos, páginas e exames do usuário
+- [ ] Frontend: botão "Limpar histórico" na tela de histórico com dialog de confirmação
+- [ ] Frontend: feedback visual após limpeza (toast de sucesso + lista vazia)

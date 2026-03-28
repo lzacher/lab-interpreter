@@ -22,6 +22,7 @@ import {
   updatePageOcrStatus,
   updatePageClassification,
   createImagingReport,
+  clearAllUserHistory,
 } from "../documents.db";
 import { getDb } from "../db";
 import { examSessions, exams } from "../../drizzle/schema";
@@ -351,8 +352,14 @@ export const documentsRouter = router({
       return { document: doc, pages };
     }),
 
-  // ── List documents ──────────────────────────────────────────────────────────
+    // ── List documents ────────────────────────────────────────────────────────
   listDocuments: protectedProcedure.query(async ({ ctx }) => {
     return listDocumentsByUser(ctx.user.id);
+  }),
+
+  // ── Clear all history ──────────────────────────────────────────────────────
+  clearHistory: protectedProcedure.mutation(async ({ ctx }) => {
+    const result = await clearAllUserHistory(ctx.user.id);
+    return result;
   }),
 });

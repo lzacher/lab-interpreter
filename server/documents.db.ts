@@ -145,3 +145,31 @@ export async function deleteImagingReport(id: number, userId: number) {
     .delete(imagingReports)
     .where(and(eq(imagingReports.id, id), eq(imagingReports.userId, userId)));
 }
+
+// ─── Clear all history for a user ─────────────────────────────────────────────
+export async function clearAllUserHistory(userId: number) {
+  const db = await getDb();
+  if (!db) return { deletedDocuments: 0 };
+
+  // 1. Buscar todos os documentos do usuário
+  const userDocs = await db
+    .select({ id: documents.id })
+    .from(documents)
+    .where(eq(documents.userId, userId));
+
+  const docIds = userDocs.map((d) => d.id);
+
+  if (docIds.length > 0) {
+    // 2. Deletar document_pages de todos os documentos
+    for (const docId of docIds) {
+      await db.delete(documentPages).where(eq(documentPages.documentId, docId));
+    }
+    // 3. Deletar os documentos
+    await db.delete(documents).where(eq(documents.userId, userId));
+  }
+
+  // 4. Deletar imaging_reports do usuário
+  await db.delete(imagingReports).where(eq(imagingReports.userId, userId));
+
+  return { deletedDocuments: docIds.length };
+}

@@ -4,6 +4,17 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import {
   FlaskConical,
@@ -15,6 +26,8 @@ import {
   Plus,
   LogIn,
   Search,
+  Eraser,
+  Loader2,
 } from "lucide-react";
 
 type Filter = "all" | "lab" | "imaging";
@@ -24,6 +37,8 @@ export default function History() {
   const { isAuthenticated, loading } = useAuth();
   const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
+
+  const utils = trpc.useUtils();
 
   const { data: labSessions, refetch: refetchLab } = trpc.lab.listSessions.useQuery(
     undefined,
@@ -41,6 +56,20 @@ export default function History() {
   const deleteImagingMutation = trpc.imaging.deleteReport.useMutation({
     onSuccess: () => { refetchImaging(); toast.success("Laudo removido."); },
     onError: () => toast.error("Erro ao remover laudo."),
+  });
+
+  const clearHistoryMutation = trpc.documents.clearHistory.useMutation({
+    onSuccess: (data) => {
+      refetchLab();
+      refetchImaging();
+      utils.documents.listDocuments.invalidate();
+      toast.success(
+        `Histórico limpo com sucesso. ${data.deletedDocuments} documento(s) removido(s).`
+      );
+    },
+    onError: (err) => {
+      toast.error(err.message ?? "Erro ao limpar histórico.");
+    },
   });
 
   if (!loading && !isAuthenticated) {
@@ -92,6 +121,8 @@ export default function History() {
       i.subtitle.toLowerCase().includes(search.toLowerCase())
     );
 
+  const isClearingHistory = clearHistoryMutation.isPending;
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* Header */}
@@ -118,11 +149,54 @@ export default function History() {
       </header>
 
       <main className="flex-1 max-w-3xl mx-auto w-full px-6 py-8">
-        <div className="mb-6">
-          <h1 className="text-xl font-semibold text-slate-800">Histórico de Laudos</h1>
-          <p className="text-slate-500 text-sm mt-1">
-            {allItems.length} laudo(s) armazenado(s)
-          </p>
+        <div className="mb-6 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-xl font-semibold text-slate-800">Histórico de Laudos</h1>
+            <p className="text-slate-500 text-sm mt-1">
+              {allItems.length} laudo(s) armazenado(s)
+            </p>
+          </div>
+
+          {/* Botão Limpar Histórico */}
+          {allItems.length > 0 && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 flex-shrink-0"
+                  disabled={isClearingHistory}
+                >
+                  {isClearingHistory ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Eraser className="h-4 w-4" />
+                  )}
+                  Limpar histórico
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Limpar todo o histórico?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta ação irá remover permanentemente todos os{" "}
+                    <strong>{allItems.length} laudo(s)</strong> do seu histórico,
+                    incluindo exames laboratoriais e laudos de imagem. Esta operação
+                    não pode ser desfeita.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-red-600 hover:bg-red-700 text-white"
+                    onClick={() => clearHistoryMutation.mutate()}
+                  >
+                    Sim, limpar tudo
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </div>
 
         {/* Filters + Search */}
