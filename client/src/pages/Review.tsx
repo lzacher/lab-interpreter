@@ -132,6 +132,7 @@ export default function ReviewPage() {
   const [pollingEnabled, setPollingEnabled] = useState(false);
 
   const processMutation = trpc.documents.process.useMutation();
+  // analyzeMutation mantido apenas como fallback silencioso caso o documento chegue sem páginas
   const analyzeMutation = trpc.documents.analyze.useMutation();
   const utils = trpc.useUtils();
 
@@ -162,24 +163,20 @@ export default function ReviewPage() {
     }
   }, [progressData, pollingEnabled]);
 
-  // ─── Auto-analyze: se o documento ainda não tem páginas no banco, chamar analyze ──
+  // ─── Fallback: se o documento chegou sem páginas (ex: upload antigo), chamar analyze silenciosamente ──
   useEffect(() => {
     if (!docData) return;
     const hasPages = (docData.pages?.length ?? 0) > 0;
-    const status = (docData.document as any)?.status;
-    // Se já tem páginas ou já está sendo analisado, não chamar novamente
-    if (hasPages || status === "analyzing") return;
-    // Chamar analyze automaticamente
+    if (hasPages) return; // já foi analisado pelo Home.tsx — nada a fazer
+    // Fallback silencioso para documentos sem páginas
     analyzeMutation.mutate(
       { documentId },
       {
         onSuccess: () => {
-          // Recarregar os dados do documento com as páginas classificadas
           utils.documents.getDocument.invalidate({ documentId });
         },
         onError: (err) => {
-          console.error("[Review] analyze error:", err);
-          // Não bloquear o usuário — ele pode classificar manualmente
+          console.error("[Review] fallback analyze error:", err);
         },
       }
     );
@@ -357,7 +354,7 @@ export default function ReviewPage() {
     );
   }
 
-  // Banner de análise em andamento (classificando páginas via LLM)
+  // isAnalyzing: apenas para o fallback silencioso (não exibe banner na UI normal)
   const isAnalyzing = analyzeMutation.isPending;
 
   if (docError || fileLoadError) {
@@ -418,13 +415,11 @@ export default function ReviewPage() {
 
       {/* Instruction banner */}
       <div className="max-w-7xl mx-auto px-4 pt-4 flex flex-col gap-2">
-        {isAnalyzing && (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-700 flex gap-2 items-center">
+        {/* Banner de fallback: exibido apenas quando o analyze é acionado como fallback (documento sem páginas) */}
+        {isAnalyzing && (docData?.pages?.length ?? 0) === 0 && (
+          <div className="bg-slate-100 border border-slate-200 rounded-lg px-4 py-3 text-sm text-slate-600 flex gap-2 items-center">
             <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
-            <span>
-              <strong>Classificando páginas automaticamente…</strong> Aguarde enquanto o sistema
-              identifica o tipo de cada página. Você pode ajustar manualmente se necessário.
-            </span>
+            <span>Preparando documento… Aguarde um momento.</span>
           </div>
         )}
         <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 text-sm text-blue-700 flex gap-2 items-start">

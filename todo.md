@@ -177,3 +177,10 @@
 - [x] Frontend: barra de progresso geral (X de Y páginas concluídas, %)
 - [x] Frontend: ícones visuais por status (○ aguardando, spinner lendo, ✓ concluído, ⚠ erro)
 - [x] 49 testes passando
+
+## Feature: Mover analyze para o fluxo de upload
+- [x] Home.tsx: chama analyze após upload (antes de navegar para /review)
+- [x] Home.tsx: indicador de 3 etapas: Upload → Classificação IA → Revisão (com spinner e check)
+- [x] Review.tsx: banner amarelo removido — páginas já chegam classificadas
+- [x] Review.tsx: fallback silencioso mantido para documentos antigos sem páginas
+- [x] 49 testes passando
