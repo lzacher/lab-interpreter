@@ -33,12 +33,9 @@ async function checkIfMedicalImage(file: File): Promise<boolean> {
     img.onload = () => {
       URL.revokeObjectURL(url);
       const { width, height } = img;
-      // Laudos médicos têm proporção retrato (altura > largura) ou próxima de A4 (1.41)
       const ratio = height / width;
       const isPortrait = ratio > 1.0;
-      // Screenshots de celular têm proporção muito alta (ex: 19:9 = ~2.1)
       const isMobileScreenshot = ratio > 1.8;
-      // Verificar predominância de branco (fundo de documento)
       const canvas = document.createElement("canvas");
       const sampleSize = 100;
       canvas.width = sampleSize;
@@ -51,12 +48,9 @@ async function checkIfMedicalImage(file: File): Promise<boolean> {
       const totalPixels = sampleSize * sampleSize;
       for (let i = 0; i < data.length; i += 4) {
         const r = data[i], g = data[i + 1], b = data[i + 2];
-        // Pixel claro: todos os canais > 200 (branco/cinza claro)
         if (r > 200 && g > 200 && b > 200) lightPixels++;
       }
       const lightRatio = lightPixels / totalPixels;
-      // Laudo: fundo predominantemente branco (>50%) E proporção retrato
-      // Screenshot de celular: proporção muito alta E fundo escuro
       const looksLikeDocument = lightRatio > 0.45 && isPortrait;
       const looksLikeMobileScreenshot = isMobileScreenshot && lightRatio < 0.6;
       if (looksLikeMobileScreenshot) { resolve(false); return; }
@@ -93,7 +87,6 @@ export default function Home() {
 
   const uploadMutation = trpc.documents.upload.useMutation({
     onSuccess: async (data) => {
-      // Etapa 2: analyze — classifica páginas via LLM
       setStep("analyzing");
       try {
         await analyzeMutation.mutateAsync({ documentId: data.documentId });
@@ -128,7 +121,6 @@ export default function Home() {
 
       const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
 
-      // JSON direto → fluxo legado do LabInterpreter
       if (ext === "json") {
         setStep("uploading");
         const text = await file.text();
@@ -136,7 +128,6 @@ export default function Home() {
         return;
       }
 
-      // PDF / JPG / JPEG → fluxo MedSuite com OCR
       if (!ACCEPTED.includes(file.type) && !ACCEPTED_EXT.includes(`.${ext}`)) {
         toast.error("Formato não suportado. Use PDF, JPG, JPEG ou JSON.");
         return;
@@ -147,7 +138,6 @@ export default function Home() {
         return;
       }
 
-      // Validação prévia para imagens JPG/JPEG: verificar se parece um laudo médico
       if ((file.type === "image/jpeg" || file.type === "image/jpg" || ext === "jpg" || ext === "jpeg") && file.size < 5 * 1024 * 1024) {
         const isLikelyMedical = await checkIfMedicalImage(file);
         if (!isLikelyMedical) {
@@ -191,12 +181,12 @@ export default function Home() {
   const busy = step !== "idle";
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="h-screen bg-slate-50 flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+      <header className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-2">
-          <FlaskConical className="h-6 w-6 text-blue-700" />
-          <span className="text-lg font-semibold text-slate-800 tracking-tight">MedSuite</span>
+          <FlaskConical className="h-5 w-5 text-blue-700" />
+          <span className="text-base font-semibold text-slate-800 tracking-tight">MedSuite</span>
         </div>
         <div className="flex items-center gap-3">
           {isAuthenticated && (
@@ -226,181 +216,190 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Hero */}
-      <main className="flex-1 flex flex-col items-center justify-center px-4 py-16">
-        <div className="max-w-2xl w-full text-center space-y-4 mb-10">
-          <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 text-sm font-medium px-3 py-1.5 rounded-full border border-blue-100">
-            <Scan className="h-4 w-4" />
-            Interpretação clínica assistida
-          </div>
-          <h1 className="text-4xl font-bold text-slate-900 leading-tight">
-            Análise de Documentos
-            <br />
-            <span className="text-blue-700">Médicos</span>
-          </h1>
-          <p className="text-slate-500 text-lg max-w-lg mx-auto">
-            Carregue laudos de laboratório ou exames de imagem em PDF, JPG ou JSON.
-            O sistema classifica, extrai e organiza os dados automaticamente.
-          </p>
-        </div>
+      {/* Main — layout split: esquerda info, direita upload */}
+      <main className="flex-1 flex items-center justify-center px-6 py-4 overflow-hidden">
+        <div className="w-full max-w-5xl flex flex-col lg:flex-row items-center gap-8 lg:gap-12">
 
-        {/* Upload Area */}
-        <div
-          className={`w-full max-w-xl border-2 border-dashed rounded-2xl p-10 text-center transition-all duration-200 bg-white
-            ${dragging ? "border-blue-500 bg-blue-50" : "border-slate-200 hover:border-blue-400 hover:bg-slate-50"}
-            ${busy ? "opacity-80 pointer-events-none cursor-not-allowed" : "cursor-pointer"}
-          `}
-          onDragOver={(e) => { e.preventDefault(); if (!busy) setDragging(true); }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={onDrop}
-          onClick={() => !busy && document.getElementById("file-input")?.click()}
-        >
-          <input
-            id="file-input"
-            type="file"
-            className="hidden"
-            accept=".pdf,.jpg,.jpeg,.json"
-            onChange={onInputChange}
-          />
-          <div className="flex flex-col items-center gap-4">
-            {/* Ícone com estado */}
-            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-colors ${
-              step === "done" ? "bg-emerald-50" :
-              busy ? "bg-blue-50" : "bg-blue-50"
-            }`}>
-              {step === "idle" && <Upload className="h-8 w-8 text-blue-600" />}
-              {(step === "uploading" || step === "analyzing") && (
-                <Loader2 className="h-8 w-8 text-blue-600 animate-spin" />
-              )}
-              {step === "done" && <CheckCircle2 className="h-8 w-8 text-emerald-600" />}
+          {/* Coluna esquerda: título + cards de recursos */}
+          <div className="flex-1 flex flex-col gap-5 min-w-0">
+            {/* Badge */}
+            <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 text-xs font-medium px-3 py-1.5 rounded-full border border-blue-100 self-start">
+              <Scan className="h-3.5 w-3.5" />
+              Interpretação clínica assistida
             </div>
 
-            {/* Texto principal */}
+            {/* Título */}
             <div>
-              <p className={`font-semibold text-base transition-colors ${
-                step === "done" ? "text-emerald-700" : "text-slate-700"
-              }`}>
-                {STEP_LABELS[step]}
+              <h1 className="text-3xl font-bold text-slate-900 leading-tight">
+                Análise de Documentos
+              </h1>
+              <h1 className="text-3xl font-bold text-blue-700 leading-tight">
+                Médicos
+              </h1>
+              <p className="text-slate-500 text-sm mt-3 max-w-sm leading-relaxed">
+                Carregue laudos de laboratório ou exames de imagem em PDF, JPG ou JSON.
+                O sistema classifica, extrai e organiza os dados automaticamente.
               </p>
-              <p className="text-sm text-slate-400 mt-1">{STEP_SUB[step]}</p>
             </div>
 
-            {/* Indicador de etapas durante o processamento */}
-            {busy && (
-              <div className="flex items-center gap-2 mt-1">
-                {/* Etapa 1: Upload */}
-                <div className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full transition-all ${
-                  step === "uploading"
-                    ? "bg-blue-100 text-blue-700"
-                    : "bg-emerald-100 text-emerald-700"
-                }`}>
-                  {step === "uploading" ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <CheckCircle2 className="h-3 w-3" />
-                  )}
-                  Upload
+            {/* Cards de recursos */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3 gap-3">
+              {[
+                {
+                  icon: <FlaskConical className="h-4 w-4 text-blue-600" />,
+                  title: "Exames Laboratoriais",
+                  desc: "Tabela estruturada com valores e referências",
+                  color: "bg-blue-50",
+                },
+                {
+                  icon: <Scan className="h-4 w-4 text-teal-600" />,
+                  title: "Exames de Imagem",
+                  desc: "Eco, ultrassom, tomografia e ressonância",
+                  color: "bg-teal-50",
+                },
+                {
+                  icon: <FileText className="h-4 w-4 text-violet-600" />,
+                  title: "Exportar PDF",
+                  desc: "Relatório formatado pronto para revisão",
+                  color: "bg-violet-50",
+                },
+              ].map((card) => (
+                <div
+                  key={card.title}
+                  className="bg-white border border-slate-200 rounded-xl p-3 text-left"
+                >
+                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center mb-2 ${card.color}`}>
+                    {card.icon}
+                  </div>
+                  <p className="font-semibold text-slate-700 text-xs">{card.title}</p>
+                  <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{card.desc}</p>
                 </div>
+              ))}
+            </div>
 
-                {/* Separador */}
-                <div className="w-6 h-px bg-slate-300" />
-
-                {/* Etapa 2: Análise */}
-                <div className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full transition-all ${
-                  step === "analyzing"
-                    ? "bg-blue-100 text-blue-700"
-                    : step === "done"
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "bg-slate-100 text-slate-400"
-                }`}>
-                  {step === "analyzing" ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : step === "done" ? (
-                    <CheckCircle2 className="h-3 w-3" />
-                  ) : (
-                    <div className="h-3 w-3 rounded-full border border-slate-300" />
-                  )}
-                  Classificação IA
-                </div>
-
-                {/* Separador */}
-                <div className="w-6 h-px bg-slate-300" />
-
-                {/* Etapa 3: Revisão */}
-                <div className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full transition-all ${
-                  step === "done"
-                    ? "bg-blue-100 text-blue-700"
-                    : "bg-slate-100 text-slate-400"
-                }`}>
-                  {step === "done" ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <div className="h-3 w-3 rounded-full border border-slate-300" />
-                  )}
-                  Revisão
-                </div>
-              </div>
-            )}
-
-            {/* Formatos aceitos (apenas quando idle) */}
-            {!busy && (
-              <>
-                <div className="flex gap-2 flex-wrap justify-center">
-                  {["PDF", "JPG", "JPEG", "JSON"].map((fmt) => (
-                    <span
-                      key={fmt}
-                      className="text-xs font-medium bg-slate-100 text-slate-500 px-2.5 py-1 rounded-full"
-                    >
-                      {fmt}
-                    </span>
-                  ))}
-                </div>
-                <p className="text-xs text-slate-400">Tamanho máximo: 20 MB</p>
-              </>
+            {/* Link histórico */}
+            {isAuthenticated && (
+              <Button
+                variant="ghost"
+                className="text-slate-400 gap-1 text-xs self-start px-0 hover:text-slate-600"
+                onClick={() => navigate("/history")}
+              >
+                Ver histórico de laudos
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Button>
             )}
           </div>
-        </div>
 
-        {/* Feature Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-12 w-full max-w-2xl">
-          {[
-            {
-              icon: <FlaskConical className="h-5 w-5 text-blue-600" />,
-              title: "Exames Laboratoriais",
-              desc: "Tabela estruturada com valores e referências",
-            },
-            {
-              icon: <Scan className="h-5 w-5 text-teal-600" />,
-              title: "Exames de Imagem",
-              desc: "Eco, ultrassom, tomografia e ressonância",
-            },
-            {
-              icon: <FileText className="h-5 w-5 text-violet-600" />,
-              title: "Exportar PDF",
-              desc: "Relatório formatado pronto para revisão",
-            },
-          ].map((card) => (
+          {/* Coluna direita: área de upload */}
+          <div className="w-full lg:w-auto lg:flex-shrink-0 lg:w-[420px]">
             <div
-              key={card.title}
-              className="bg-white border border-slate-200 rounded-xl p-4 text-left"
+              className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-200 bg-white
+                ${dragging ? "border-blue-500 bg-blue-50" : "border-slate-200 hover:border-blue-400 hover:bg-slate-50"}
+                ${busy ? "opacity-80 pointer-events-none cursor-not-allowed" : "cursor-pointer"}
+              `}
+              onDragOver={(e) => { e.preventDefault(); if (!busy) setDragging(true); }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={onDrop}
+              onClick={() => !busy && document.getElementById("file-input")?.click()}
             >
-              <div className="mb-2">{card.icon}</div>
-              <p className="font-semibold text-slate-700 text-sm">{card.title}</p>
-              <p className="text-xs text-slate-400 mt-0.5">{card.desc}</p>
-            </div>
-          ))}
-        </div>
+              <input
+                id="file-input"
+                type="file"
+                className="hidden"
+                accept=".pdf,.jpg,.jpeg,.json"
+                onChange={onInputChange}
+              />
+              <div className="flex flex-col items-center gap-4">
+                {/* Ícone com estado */}
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-colors ${
+                  step === "done" ? "bg-emerald-50" : "bg-blue-50"
+                }`}>
+                  {step === "idle" && <Upload className="h-7 w-7 text-blue-600" />}
+                  {(step === "uploading" || step === "analyzing") && (
+                    <Loader2 className="h-7 w-7 text-blue-600 animate-spin" />
+                  )}
+                  {step === "done" && <CheckCircle2 className="h-7 w-7 text-emerald-600" />}
+                </div>
 
-        {isAuthenticated && (
-          <Button
-            variant="ghost"
-            className="mt-8 text-slate-500 gap-1.5 text-sm"
-            onClick={() => navigate("/history")}
-          >
-            Ver histórico de laudos
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        )}
+                {/* Texto principal */}
+                <div>
+                  <p className={`font-semibold text-sm transition-colors ${
+                    step === "done" ? "text-emerald-700" : "text-slate-700"
+                  }`}>
+                    {STEP_LABELS[step]}
+                  </p>
+                  <p className="text-xs text-slate-400 mt-1">{STEP_SUB[step]}</p>
+                </div>
+
+                {/* Indicador de etapas durante o processamento */}
+                {busy && (
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full transition-all ${
+                      step === "uploading"
+                        ? "bg-blue-100 text-blue-700"
+                        : "bg-emerald-100 text-emerald-700"
+                    }`}>
+                      {step === "uploading" ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="h-3 w-3" />
+                      )}
+                      Upload
+                    </div>
+                    <div className="w-5 h-px bg-slate-300" />
+                    <div className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full transition-all ${
+                      step === "analyzing"
+                        ? "bg-blue-100 text-blue-700"
+                        : step === "done"
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-slate-100 text-slate-400"
+                    }`}>
+                      {step === "analyzing" ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : step === "done" ? (
+                        <CheckCircle2 className="h-3 w-3" />
+                      ) : (
+                        <div className="h-3 w-3 rounded-full border border-slate-300" />
+                      )}
+                      Classificação IA
+                    </div>
+                    <div className="w-5 h-px bg-slate-300" />
+                    <div className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full transition-all ${
+                      step === "done"
+                        ? "bg-blue-100 text-blue-700"
+                        : "bg-slate-100 text-slate-400"
+                    }`}>
+                      {step === "done" ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <div className="h-3 w-3 rounded-full border border-slate-300" />
+                      )}
+                      Revisão
+                    </div>
+                  </div>
+                )}
+
+                {/* Formatos aceitos (apenas quando idle) */}
+                {!busy && (
+                  <>
+                    <div className="flex gap-2 flex-wrap justify-center">
+                      {["PDF", "JPG", "JPEG", "JSON"].map((fmt) => (
+                        <span
+                          key={fmt}
+                          className="text-xs font-medium bg-slate-100 text-slate-500 px-2.5 py-1 rounded-full"
+                        >
+                          {fmt}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="text-xs text-slate-400">Tamanho máximo: 20 MB</p>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+        </div>
       </main>
     </div>
   );
