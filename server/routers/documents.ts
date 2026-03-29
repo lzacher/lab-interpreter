@@ -193,14 +193,11 @@ export const documentsRouter = router({
       await updateDocumentStatus(input.documentId, "processing");
 
       const tmpDir = os.tmpdir();
+      // tmpFile usado apenas para documentos de arquivo único (fallback)
       const tmpFile = path.join(tmpDir, `doc-ocr-${input.documentId}-${nanoid()}.${doc.fileType}`);
+      const tmpFilesCreated: string[] = [];
 
       try {
-        const res = await fetch(doc.fileUrl);
-        if (!res.ok) throw new Error("Falha ao baixar arquivo.");
-        const buffer = Buffer.from(await res.arrayBuffer());
-        fs.writeFileSync(tmpFile, buffer);
-
         // Marcar páginas selecionadas como "pending" antes de iniciar o OCR
         const savedPages = await getPagesByDocument(input.documentId);
         for (const pageNum of input.selectedPageNumbers) {
@@ -210,26 +207,85 @@ export const documentsRouter = router({
           }
         }
 
-        // OCR das páginas selecionadas — com atualização de status por página
-        const ocrResult = await extractTextFromPages(
-          tmpFile,
-          input.selectedPageNumbers,
-          async (pageNum, status) => {
-            const dbPage = savedPages.find((p) => p.pageNumber === pageNum);
-            if (dbPage) await updatePageOcrStatus(dbPage.id, status);
-          }
+        // ── Verificar se é documento com múltiplos arquivos (sourceFileUrl por página) ──
+        const selectedDbPages = savedPages.filter((p) =>
+          input.selectedPageNumbers.includes(p.pageNumber)
+        );
+        const hasMultipleFiles = selectedDbPages.some(
+          (p) => p.sourceFileUrl && p.sourceFileUrl !== doc.fileUrl
         );
 
-        // Salvar texto extraído por página (ocrStatus já é "done" via updatePageExtractedText)
-        for (const ocrPage of ocrResult.pages) {
-          const dbPage = savedPages.find((p) => p.pageNumber === ocrPage.pageNumber);
-          if (dbPage) {
-            await updatePageExtractedText(dbPage.id, ocrPage.text);
+        let allOcrPages: Array<{ pageNumber: number; text: string }> = [];
+
+        if (hasMultipleFiles) {
+          // ── Múltiplos arquivos: agrupar páginas por sourceFileUrl e fazer OCR de cada arquivo ──
+          // Mapa: fileUrl → lista de páginas (com pageNumber global)
+          const fileGroups = new Map<string, Array<{ pageNumber: number; dbPage: typeof savedPages[0] }>>();
+          for (const dbPage of selectedDbPages) {
+            const fileUrl = dbPage.sourceFileUrl ?? doc.fileUrl;
+            if (!fileGroups.has(fileUrl)) fileGroups.set(fileUrl, []);
+            fileGroups.get(fileUrl)!.push({ pageNumber: dbPage.pageNumber, dbPage });
+          }
+
+          for (const [fileUrl, pageGroup] of Array.from(fileGroups.entries())) {
+            const firstPage = pageGroup[0].dbPage;
+            const fileExt = ((firstPage.sourceFileKey ?? doc.fileKey ?? "jpeg") as string).split(".").pop() ?? "jpeg";
+            const tmpGroupFile = path.join(tmpDir, `doc-ocr-${input.documentId}-${nanoid()}.${fileExt}`);
+            tmpFilesCreated.push(tmpGroupFile);
+
+            const res = await fetch(fileUrl);
+            if (!res.ok) throw new Error(`Falha ao baixar arquivo: ${fileUrl}`);
+            const buffer = Buffer.from(await res.arrayBuffer());
+            fs.writeFileSync(tmpGroupFile, buffer);
+
+            // Para imagens JPEG, cada arquivo tem apenas 1 página — mapear pageNumber=1 do OCR para o pageNumber global
+            const globalPageNumbers = pageGroup.map((g: { pageNumber: number; dbPage: typeof savedPages[0] }) => g.pageNumber);
+            const ocrResult = await extractTextFromPages(
+              tmpGroupFile,
+              [1], // imagem sempre tem página 1
+              async (_pageNum, status) => {
+                // Atualizar status de todas as páginas deste arquivo
+                for (const g of pageGroup as Array<{ pageNumber: number; dbPage: typeof savedPages[0] }>) {
+                  await updatePageOcrStatus(g.dbPage.id, status);
+                }
+              }
+            );
+
+            // Mapear resultado OCR (pageNumber=1) para o pageNumber global
+            for (const ocrPage of ocrResult.pages) {
+              const globalPageNumber = globalPageNumbers[ocrPage.pageNumber - 1] ?? globalPageNumbers[0];
+              allOcrPages.push({ pageNumber: globalPageNumber, text: ocrPage.text });
+              const dbPage = (pageGroup as Array<{ pageNumber: number; dbPage: typeof savedPages[0] }>).find((g) => g.pageNumber === globalPageNumber)?.dbPage;
+              if (dbPage) await updatePageExtractedText(dbPage.id, ocrPage.text);
+            }
+          }
+        } else {
+          // ── Arquivo único: comportamento original ──
+          const res = await fetch(doc.fileUrl);
+          if (!res.ok) throw new Error("Falha ao baixar arquivo.");
+          const buffer = Buffer.from(await res.arrayBuffer());
+          fs.writeFileSync(tmpFile, buffer);
+          tmpFilesCreated.push(tmpFile);
+
+          const ocrResult = await extractTextFromPages(
+            tmpFile,
+            input.selectedPageNumbers,
+            async (pageNum, status) => {
+              const dbPage = savedPages.find((p) => p.pageNumber === pageNum);
+              if (dbPage) await updatePageOcrStatus(dbPage.id, status);
+            }
+          );
+
+          for (const ocrPage of ocrResult.pages) {
+            allOcrPages.push({ pageNumber: ocrPage.pageNumber, text: ocrPage.text });
+            const dbPage = savedPages.find((p) => p.pageNumber === ocrPage.pageNumber);
+            if (dbPage) await updatePageExtractedText(dbPage.id, ocrPage.text);
           }
         }
 
-        // Concatenar todo o texto extraído
-        const fullText = ocrResult.pages.map((p) => p.text).join("\n\n");
+        // Concatenar todo o texto extraído (ordenado por número de página)
+        allOcrPages.sort((a, b) => a.pageNumber - b.pageNumber);
+        const fullText = allOcrPages.map((p) => p.text).join("\n\n");
 
         // Determinar tipo do documento:
         // Prioridade 1: classificações enviadas pelo frontend (estado atual da UI)
@@ -327,7 +383,7 @@ export const documentsRouter = router({
           resultType,
           resultId,
           fileName,
-          pagesProcessed: ocrResult.pages.length,
+          pagesProcessed: allOcrPages.length,
         };
       } catch (err: any) {
         await updateDocumentStatus(input.documentId, "error");
@@ -336,7 +392,14 @@ export const documentsRouter = router({
           message: err.message ?? "Erro ao processar páginas.",
         });
       } finally {
-        try { fs.unlinkSync(tmpFile); } catch {}
+        // Limpar todos os arquivos temporários criados
+        for (const f of tmpFilesCreated) {
+          try { fs.unlinkSync(f); } catch {}
+        }
+        // Limpar tmpFile original se não foi adicionado à lista
+        if (!tmpFilesCreated.includes(tmpFile)) {
+          try { fs.unlinkSync(tmpFile); } catch {}
+        }
       }
     }),
 
