@@ -357,6 +357,138 @@ export const documentsRouter = router({
     return listDocumentsByUser(ctx.user.id);
   }),
 
+
+  // ── Upload múltiplo: vários arquivos → um documento composto ──────────────
+  uploadMultiple: protectedProcedure
+    .input(
+      z.object({
+        files: z
+          .array(
+            z.object({
+              fileName: z.string(),
+              fileType: z.string(),
+              fileBase64: z.string(),
+            })
+          )
+          .min(1)
+          .max(10),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const allowedTypes = ["pdf", "jpg", "jpeg"];
+      for (const file of input.files) {
+        const ext = file.fileType.toLowerCase().replace(".", "");
+        if (!allowedTypes.includes(ext)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Tipo não suportado: ${file.fileName}. Use PDF, JPG ou JPEG.`,
+          });
+        }
+      }
+      const mimeMap: Record<string, string> = {
+        pdf: "application/pdf",
+        jpg: "image/jpeg",
+        jpeg: "image/jpeg",
+      };
+      const uploadedFiles: Array<{ fileName: string; fileType: string; fileKey: string; fileUrl: string }> = [];
+      for (const file of input.files) {
+        const ext = file.fileType.toLowerCase().replace(".", "");
+        const buffer = Buffer.from(file.fileBase64, "base64");
+        const fileKey = `medsuite/${ctx.user.id}/${nanoid()}-${file.fileName}`;
+        const { url } = await storagePut(fileKey, buffer, mimeMap[ext] ?? "application/octet-stream");
+        uploadedFiles.push({ fileName: file.fileName, fileType: ext, fileKey, fileUrl: url });
+      }
+      const primary = uploadedFiles[0];
+      const composedName =
+        input.files.length > 1
+          ? `${primary.fileName} (+${input.files.length - 1} arquivo${input.files.length > 2 ? "s" : ""})`
+          : primary.fileName;
+      const docId = await createDocument({
+        userId: ctx.user.id,
+        originalName: composedName,
+        fileType: primary.fileType,
+        fileKey: primary.fileKey,
+        fileUrl: primary.fileUrl,
+      });
+      return {
+        documentId: docId,
+        fileUrl: primary.fileUrl,
+        fileCount: uploadedFiles.length,
+        uploadedFiles,
+      };
+    }),
+
+  // ── Analyze múltiplo: classifica páginas de todos os arquivos do documento ──
+  analyzeMultiple: protectedProcedure
+    .input(
+      z.object({
+        documentId: z.number(),
+        uploadedFiles: z.array(
+          z.object({
+            fileName: z.string(),
+            fileUrl: z.string(),
+            fileKey: z.string(),
+            fileType: z.string(),
+          })
+        ),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const doc = await getDocumentById(input.documentId);
+      if (!doc || doc.userId !== ctx.user.id) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Documento não encontrado." });
+      }
+      await updateDocumentStatus(input.documentId, "analyzing");
+      const tmpDir = os.tmpdir();
+      let globalPageNumber = 0;
+      let totalPages = 0;
+      try {
+        for (let fileIndex = 0; fileIndex < input.uploadedFiles.length; fileIndex++) {
+          const uf = input.uploadedFiles[fileIndex];
+          const tmpFile = path.join(
+            tmpDir,
+            `doc-multi-${input.documentId}-${fileIndex}-${nanoid()}.${uf.fileType}`
+          );
+          try {
+            const res = await fetch(uf.fileUrl);
+            if (!res.ok) throw new Error(`Falha ao baixar: ${uf.fileName}`);
+            const buffer = Buffer.from(await res.arrayBuffer());
+            fs.writeFileSync(tmpFile, buffer);
+            const result = await analyzeDocument(tmpFile);
+            for (const page of result.pages) {
+              globalPageNumber++;
+              const thumbBuffer = Buffer.from(page.thumbnailBase64, "base64");
+              const thumbKey = `medsuite/thumbnails/${ctx.user.id}/${input.documentId}/page-${globalPageNumber}.jpg`;
+              const { url: thumbUrl } = await storagePut(thumbKey, thumbBuffer, "image/jpeg");
+              await upsertDocumentPage({
+                documentId: input.documentId,
+                pageNumber: globalPageNumber,
+                thumbnailKey: thumbKey,
+                thumbnailUrl: thumbUrl,
+                classification: page.classification,
+                classificationScore: page.score,
+                sourceFileUrl: uf.fileUrl,
+                sourceFileKey: uf.fileKey,
+                sourceFileIndex: fileIndex,
+              });
+            }
+            totalPages += result.totalPages;
+          } finally {
+            try { fs.unlinkSync(tmpFile); } catch {}
+          }
+        }
+        await updateDocumentStatus(input.documentId, "analyzed", totalPages);
+        const savedPages = await getPagesByDocument(input.documentId);
+        return { totalPages, pages: savedPages };
+      } catch (err: any) {
+        await updateDocumentStatus(input.documentId, "error");
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: err.message ?? "Erro ao analisar documentos.",
+        });
+      }
+    }),
+
   // ── Clear all history ──────────────────────────────────────────────────────
   clearHistory: protectedProcedure.mutation(async ({ ctx }) => {
     const result = await clearAllUserHistory(ctx.user.id);

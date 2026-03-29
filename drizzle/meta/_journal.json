@@ -43,6 +43,13 @@
       "when": 1774316189071,
       "tag": "0005_next_naoko",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1774748577008,
+      "tag": "0006_tiresome_la_nuit",
+      "breakpoints": true
     }
   ]
 }

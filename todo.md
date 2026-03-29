@@ -189,3 +189,11 @@
 - [ ] Backend: procedure clearHistory que exclui todos os documentos, páginas e exames do usuário
 - [ ] Frontend: botão "Limpar histórico" na tela de histórico com dialog de confirmação
 - [ ] Frontend: feedback visual após limpeza (toast de sucesso + lista vazia)
+
+## Feature: Upload múltiplo de arquivos do mesmo paciente
+- [ ] Frontend: aceitar múltiplos arquivos no input (multiple attribute)
+- [ ] Frontend: exibir lista de arquivos selecionados com opção de remover cada um
+- [ ] Backend: procedure uploadMultiple que recebe array de arquivos e os mescla em um único documento
+- [ ] Backend: mesclar páginas de todos os arquivos em ordem, mantendo rastreabilidade por arquivo de origem
+- [ ] Frontend: indicador de progresso por arquivo durante o upload múltiplo
+- [ ] Testar fluxo completo com 2+ PDFs do mesmo paciente

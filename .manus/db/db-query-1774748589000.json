@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `document_pages` ADD `sourceFileUrl` text;\nALTER TABLE `document_pages` ADD `sourceFileKey` varchar(512);\nALTER TABLE `document_pages` ADD `sourceFileIndex` int DEFAULT 0;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sWoaWTPntxGbWh.2ac340c65fe1 --database SYJ8HnCW4cDbQBB8KzYoKX --execute ALTER TABLE `document_pages` ADD `sourceFileUrl` text;\nALTER TABLE `document_pages` ADD `sourceFileKey` varchar(512);\nALTER TABLE `document_pages` ADD `sourceFileIndex` int DEFAULT 0;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1653
+}

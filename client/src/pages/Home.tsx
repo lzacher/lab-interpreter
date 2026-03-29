@@ -15,17 +15,15 @@ import {
   LogIn,
   CheckCircle2,
   Loader2,
+  X,
+  FilePlus,
+  FileImage,
+  FileJson,
 } from "lucide-react";
 
 const ACCEPTED = ["application/pdf", "image/jpeg", "image/jpg"];
-const ACCEPTED_EXT = [".pdf", ".jpg", ".jpeg"];
+const ACCEPTED_EXT = [".pdf", ".jpg", ".jpeg", ".json"];
 
-/**
- * Verifica heuristicamente se uma imagem parece ser um laudo médico.
- * Analisa: proporção (laudos são geralmente retrato/A4), predominância de pixels brancos
- * (fundo branco de documento), e tamanho do arquivo (laudos tendem a ser maiores).
- * Retorna true se provavelmente é um laudo, false se parece screenshot/foto.
- */
 async function checkIfMedicalImage(file: File): Promise<boolean> {
   return new Promise((resolve) => {
     const img = new Image();
@@ -61,11 +59,24 @@ async function checkIfMedicalImage(file: File): Promise<boolean> {
   });
 }
 
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function fileIcon(name: string) {
+  const ext = name.split(".").pop()?.toLowerCase();
+  if (ext === "pdf") return <FileText className="h-4 w-4 text-red-500" />;
+  if (ext === "json") return <FileJson className="h-4 w-4 text-yellow-500" />;
+  return <FileImage className="h-4 w-4 text-blue-500" />;
+}
+
 type UploadStep = "idle" | "uploading" | "analyzing" | "done";
 
 const STEP_LABELS: Record<UploadStep, string> = {
-  idle: "Arraste o arquivo aqui",
-  uploading: "Enviando arquivo…",
+  idle: "Arraste os arquivos aqui",
+  uploading: "Enviando arquivos…",
   analyzing: "Preparando documento…",
   done: "Pronto! Redirecionando…",
 };
@@ -82,14 +93,17 @@ export default function Home() {
   const { user, isAuthenticated, loading } = useAuth();
   const [dragging, setDragging] = useState(false);
   const [step, setStep] = useState<UploadStep>("idle");
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
-  const analyzeMutation = trpc.documents.analyze.useMutation();
-
-  const uploadMutation = trpc.documents.upload.useMutation({
+  const analyzeMultipleMutation = trpc.documents.analyzeMultiple.useMutation();
+  const uploadMultipleMutation = trpc.documents.uploadMultiple.useMutation({
     onSuccess: async (data) => {
       setStep("analyzing");
       try {
-        await analyzeMutation.mutateAsync({ documentId: data.documentId });
+        await analyzeMultipleMutation.mutateAsync({
+          documentId: data.documentId,
+          uploadedFiles: data.uploadedFiles,
+        });
       } catch {
         // analyze falhou — continua para /review com fallback interno
       }
@@ -97,7 +111,7 @@ export default function Home() {
       navigate(`/review/${data.documentId}`);
     },
     onError: (err) => {
-      toast.error(err.message ?? "Erro ao enviar arquivo.");
+      toast.error(err.message ?? "Erro ao enviar arquivos.");
       setStep("idle");
     },
   });
@@ -112,70 +126,113 @@ export default function Home() {
     },
   });
 
-  const handleFile = useCallback(
-    async (file: File) => {
+  const validateAndAddFiles = useCallback(
+    async (files: File[]) => {
       if (!isAuthenticated) {
         toast.error("Faça login para continuar.");
         return;
       }
 
-      const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
-
-      if (ext === "json") {
+      // JSON: processar imediatamente (não suporta múltiplos)
+      const jsonFile = files.find((f) => f.name.split(".").pop()?.toLowerCase() === "json");
+      if (jsonFile) {
+        if (files.length > 1) {
+          toast.warning("Arquivos JSON são processados individualmente. Apenas o JSON será enviado.");
+        }
         setStep("uploading");
-        const text = await file.text();
+        const text = await jsonFile.text();
         labUploadMutation.mutate({ jsonContent: text });
         return;
       }
 
-      if (!ACCEPTED.includes(file.type) && !ACCEPTED_EXT.includes(`.${ext}`)) {
-        toast.error("Formato não suportado. Use PDF, JPG, JPEG ou JSON.");
-        return;
-      }
-
-      if (file.size > 20 * 1024 * 1024) {
-        toast.error("Arquivo muito grande. Tamanho máximo: 20 MB.");
-        return;
-      }
-
-      if ((file.type === "image/jpeg" || file.type === "image/jpg" || ext === "jpg" || ext === "jpeg") && file.size < 5 * 1024 * 1024) {
-        const isLikelyMedical = await checkIfMedicalImage(file);
-        if (!isLikelyMedical) {
-          toast.warning(
-            "Esta imagem pode não ser um laudo médico (screenshot, foto, etc.). O processamento continuará, mas talvez nenhum exame seja encontrado.",
-            { duration: 6000 }
-          );
+      const valid: File[] = [];
+      for (const file of files) {
+        const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+        if (!ACCEPTED.includes(file.type) && !ACCEPTED_EXT.includes(`.${ext}`)) {
+          toast.error(`Formato não suportado: ${file.name}. Use PDF, JPG ou JPEG.`);
+          continue;
         }
+        if (file.size > 20 * 1024 * 1024) {
+          toast.error(`Arquivo muito grande: ${file.name}. Máximo 20 MB.`);
+          continue;
+        }
+        if ((ext === "jpg" || ext === "jpeg") && file.size < 5 * 1024 * 1024) {
+          const isLikelyMedical = await checkIfMedicalImage(file);
+          if (!isLikelyMedical) {
+            toast.warning(
+              `"${file.name}" pode não ser um laudo médico (screenshot, foto, etc.). O processamento continuará, mas talvez nenhum exame seja encontrado.`,
+              { duration: 6000 }
+            );
+          }
+        }
+        valid.push(file);
       }
 
-      setStep("uploading");
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const base64 = (e.target?.result as string).split(",")[1];
-        uploadMutation.mutate({
-          fileName: file.name,
-          fileType: ext,
-          fileBase64: base64,
-        });
-      };
-      reader.readAsDataURL(file);
+      if (valid.length === 0) return;
+
+      // Verificar limite de 10 arquivos
+      const total = selectedFiles.length + valid.length;
+      if (total > 10) {
+        toast.error("Máximo de 10 arquivos por sessão.");
+        const allowed = valid.slice(0, 10 - selectedFiles.length);
+        setSelectedFiles((prev) => [...prev, ...allowed]);
+        return;
+      }
+
+      setSelectedFiles((prev) => [...prev, ...valid]);
     },
-    [isAuthenticated, uploadMutation, labUploadMutation]
+    [isAuthenticated, labUploadMutation, selectedFiles]
   );
+
+  const removeFile = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleProcess = useCallback(async () => {
+    if (selectedFiles.length === 0) return;
+    if (!isAuthenticated) {
+      toast.error("Faça login para continuar.");
+      return;
+    }
+
+    setStep("uploading");
+
+    try {
+      const filesData = await Promise.all(
+        selectedFiles.map(async (file) => {
+          const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+          const base64 = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve((e.target?.result as string).split(",")[1]);
+            reader.readAsDataURL(file);
+          });
+          return { fileName: file.name, fileType: ext, fileBase64: base64 };
+        })
+      );
+
+      uploadMultipleMutation.mutate({ files: filesData });
+    } catch {
+      toast.error("Erro ao preparar arquivos.");
+      setStep("idle");
+    }
+  }, [selectedFiles, isAuthenticated, uploadMultipleMutation]);
 
   const onDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
       setDragging(false);
-      const file = e.dataTransfer.files[0];
-      if (file) handleFile(file);
+      if (step !== "idle") return;
+      const files = Array.from(e.dataTransfer.files);
+      if (files.length > 0) validateAndAddFiles(files);
     },
-    [handleFile]
+    [step, validateAndAddFiles]
   );
 
   const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) handleFile(file);
+    const files = Array.from(e.target.files ?? []);
+    if (files.length > 0) validateAndAddFiles(files);
+    // Reset input so same file can be re-added
+    e.target.value = "";
   };
 
   const busy = step !== "idle";
@@ -237,7 +294,7 @@ export default function Home() {
                 Médicos
               </h1>
               <p className="text-slate-500 text-sm mt-3 max-w-sm leading-relaxed">
-                Carregue laudos de laboratório ou exames de imagem em PDF, JPG ou JSON.
+                Carregue um ou mais laudos do mesmo paciente em PDF ou JPG.
                 O sistema classifica, extrai e organiza os dados automaticamente.
               </p>
             </div>
@@ -291,13 +348,15 @@ export default function Home() {
           </div>
 
           {/* Coluna direita: área de upload */}
-          <div className="w-full lg:w-auto lg:flex-shrink-0 lg:w-[420px]">
+          <div className="w-full lg:w-[420px] lg:flex-shrink-0 flex flex-col gap-3">
+
+            {/* Drop zone */}
             <div
-              className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-200 bg-white
+              className={`border-2 border-dashed rounded-2xl p-6 text-center transition-all duration-200 bg-white
                 ${dragging ? "border-blue-500 bg-blue-50" : "border-slate-200 hover:border-blue-400 hover:bg-slate-50"}
                 ${busy ? "opacity-80 pointer-events-none cursor-not-allowed" : "cursor-pointer"}
               `}
-              onDragOver={(e) => { e.preventDefault(); if (!busy) setDragging(true); }}
+              onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
               onDragLeave={() => setDragging(false)}
               onDrop={onDrop}
               onClick={() => !busy && document.getElementById("file-input")?.click()}
@@ -307,18 +366,19 @@ export default function Home() {
                 type="file"
                 className="hidden"
                 accept=".pdf,.jpg,.jpeg,.json"
+                multiple
                 onChange={onInputChange}
               />
-              <div className="flex flex-col items-center gap-4">
+              <div className="flex flex-col items-center gap-3">
                 {/* Ícone com estado */}
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-colors ${
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors ${
                   step === "done" ? "bg-emerald-50" : "bg-blue-50"
                 }`}>
-                  {step === "idle" && <Upload className="h-7 w-7 text-blue-600" />}
+                  {step === "idle" && <Upload className="h-6 w-6 text-blue-600" />}
                   {(step === "uploading" || step === "analyzing") && (
-                    <Loader2 className="h-7 w-7 text-blue-600 animate-spin" />
+                    <Loader2 className="h-6 w-6 text-blue-600 animate-spin" />
                   )}
-                  {step === "done" && <CheckCircle2 className="h-7 w-7 text-emerald-600" />}
+                  {step === "done" && <CheckCircle2 className="h-6 w-6 text-emerald-600" />}
                 </div>
 
                 {/* Texto principal */}
@@ -379,8 +439,8 @@ export default function Home() {
                   </div>
                 )}
 
-                {/* Formatos aceitos (apenas quando idle) */}
-                {!busy && (
+                {/* Formatos aceitos (apenas quando idle e sem arquivos) */}
+                {!busy && selectedFiles.length === 0 && (
                   <>
                     <div className="flex gap-2 flex-wrap justify-center">
                       {["PDF", "JPG", "JPEG", "JSON"].map((fmt) => (
@@ -392,11 +452,61 @@ export default function Home() {
                         </span>
                       ))}
                     </div>
-                    <p className="text-xs text-slate-400">Tamanho máximo: 20 MB</p>
+                    <p className="text-xs text-slate-400">Até 10 arquivos · 20 MB cada</p>
                   </>
+                )}
+
+                {/* Indicação de adicionar mais quando já há arquivos */}
+                {!busy && selectedFiles.length > 0 && (
+                  <p className="text-xs text-blue-500 font-medium">
+                    + Clique ou arraste para adicionar mais arquivos
+                  </p>
                 )}
               </div>
             </div>
+
+            {/* Lista de arquivos selecionados */}
+            {selectedFiles.length > 0 && !busy && (
+              <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                <div className="px-3 py-2 border-b border-slate-100 flex items-center justify-between">
+                  <span className="text-xs font-semibold text-slate-600">
+                    {selectedFiles.length} arquivo{selectedFiles.length > 1 ? "s" : ""} selecionado{selectedFiles.length > 1 ? "s" : ""}
+                  </span>
+                  <button
+                    className="text-xs text-slate-400 hover:text-red-500 transition-colors"
+                    onClick={() => setSelectedFiles([])}
+                  >
+                    Remover todos
+                  </button>
+                </div>
+                <ul className="divide-y divide-slate-100 max-h-36 overflow-y-auto">
+                  {selectedFiles.map((file, i) => (
+                    <li key={i} className="flex items-center gap-2 px-3 py-2">
+                      {fileIcon(file.name)}
+                      <span className="flex-1 text-xs text-slate-700 truncate">{file.name}</span>
+                      <span className="text-xs text-slate-400 flex-shrink-0">{formatBytes(file.size)}</span>
+                      <button
+                        className="text-slate-300 hover:text-red-500 transition-colors flex-shrink-0"
+                        onClick={(e) => { e.stopPropagation(); removeFile(i); }}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Botão Processar */}
+            {selectedFiles.length > 0 && !busy && (
+              <Button
+                className="w-full bg-blue-700 hover:bg-blue-800 text-white gap-2"
+                onClick={handleProcess}
+              >
+                <FilePlus className="h-4 w-4" />
+                Processar {selectedFiles.length} arquivo{selectedFiles.length > 1 ? "s" : ""}
+              </Button>
+            )}
           </div>
 
         </div>

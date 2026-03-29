@@ -66,6 +66,11 @@ export const documentPages = mysqlTable("document_pages", {
   selectedForProcessing: int("selectedForProcessing").default(0), // 0 or 1
   ocrStatus: mysqlEnum("ocrStatus", ["pending", "processing", "done", "error"]).default("pending"),
   extractedText: text("extractedText"),
+  /** URL do arquivo de origem desta página (para upload múltiplo) */
+  sourceFileUrl: text("sourceFileUrl"),
+  sourceFileKey: varchar("sourceFileKey", { length: 512 }),
+  /** Índice do arquivo de origem (0-based) para upload múltiplo */
+  sourceFileIndex: int("sourceFileIndex").default(0),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
