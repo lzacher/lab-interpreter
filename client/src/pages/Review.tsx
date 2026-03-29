@@ -44,6 +44,7 @@ interface PageInfo {
   pageNumber: number;
   type: PageType;
   selected: boolean;
+  thumbnailUrl?: string; // URL da thumbnail do S3 (para múltiplos arquivos de imagem)
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -221,17 +222,39 @@ export default function ReviewPage() {
             })
           );
         } else {
-          // Image file
+          // Image file — pode ser único ou múltiplos arquivos mesclados
+          const dbPages = docData?.pages ?? [];
+          if (dbPages.length > 1) {
+            // Múltiplos arquivos: usar as páginas do banco com thumbnails do S3
+            setTotalPages(dbPages.length);
+            setPages(
+              dbPages.map((p: any) => {
+                const dbClass = p.classification as PageType | undefined;
+                const type: PageType =
+                  dbClass === "laudo" || dbClass === "imagem" ? dbClass : "indefinido";
+                return {
+                  pageNumber: p.pageNumber,
+                  type,
+                  selected: true,
+                  thumbnailUrl: p.thumbnailUrl ?? undefined,
+                };
+              })
+            );
+            // Não carregar imgObjectUrl — cada página usa sua própria thumbnailUrl
+            setLoadingFile(false);
+            return;
+          }
+          // Arquivo único: comportamento original
           const blob = new Blob([buffer], { type: "image/jpeg" });
           const url = URL.createObjectURL(blob);
           setImgObjectUrl(url);
           setTotalPages(1);
           // Pré-preencher classificação para imagem
-          const imgDbPage = docData?.pages?.find((p: any) => p.pageNumber === 1);
+          const imgDbPage = dbPages.find((p: any) => p.pageNumber === 1);
           const imgClass = imgDbPage?.classification as PageType | undefined;
           const imgType: PageType =
             imgClass === "laudo" || imgClass === "imagem" ? imgClass : "indefinido";
-          setPages([{ pageNumber: 1, type: imgType, selected: true }]);
+          setPages([{ pageNumber: 1, type: imgType, selected: true, thumbnailUrl: imgDbPage?.thumbnailUrl ?? undefined }]);
         }
       })
       .catch((err) => {
@@ -448,7 +471,7 @@ export default function ReviewPage() {
                 key={page.pageNumber}
                 page={page}
                 pdfData={isPdf ? pdfData : null}
-                imgUrl={!isPdf ? imgObjectUrl : null}
+                imgUrl={!isPdf ? (page.thumbnailUrl ?? imgObjectUrl) : null}
                 onToggleSelect={() => toggleSelect(page.pageNumber)}
                 onSetType={(t) => setPageType(page.pageNumber, t)}
                 onZoom={() => setZoomPage(page.pageNumber)}
