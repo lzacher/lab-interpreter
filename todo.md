@@ -197,3 +197,10 @@
 - [ ] Backend: mesclar páginas de todos os arquivos em ordem, mantendo rastreabilidade por arquivo de origem
 - [ ] Frontend: indicador de progresso por arquivo durante o upload múltiplo
 - [ ] Testar fluxo completo com 2+ PDFs do mesmo paciente
+
+## Feature: Resumo Clínico por IA (editável)
+- [ ] Adicionar campo clinical_summary na tabela exam_sessions (schema + migration)
+- [ ] Criar procedure generateClinicalSummary no backend (invokeLLM com os exames extraídos)
+- [ ] Criar procedure saveClinicalSummary para persistir edições do usuário
+- [ ] Implementar seção de resumo clínico editável na tela Analysis.tsx
+- [ ] Incluir resumo clínico no PDF exportado

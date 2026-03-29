@@ -1,8 +1,9 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
   TableBody,
@@ -25,7 +26,12 @@ import {
   TrendingUp,
   TrendingDown,
   Plus,
+  Sparkles,
+  Pencil,
+  Check,
+  X,
 } from "lucide-react";
+import { toast } from "sonner";
 
 // Classifica o status do exame para destaque visual
 function classifyStatus(status: string): "alterado" | "elevado" | "baixo" | "normal" {
@@ -62,10 +68,57 @@ export default function Analysis() {
   const [obsExpanded, setObsExpanded] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
 
+  // Resumo clínico
+  const [summaryText, setSummaryText] = useState("");
+  const [isEditingSummary, setIsEditingSummary] = useState(false);
+  const [editBuffer, setEditBuffer] = useState("");
+
   const { data: session, isLoading } = trpc.lab.getSession.useQuery(
     { sessionId },
     { enabled: !!sessionId }
   );
+
+  // Carregar resumo salvo quando a sessão carregar
+  useEffect(() => {
+    if (session && (session as any).clinicalSummary) {
+      setSummaryText((session as any).clinicalSummary);
+    }
+  }, [session]);
+
+  const generateSummary = trpc.lab.generateClinicalSummary.useMutation({
+    onSuccess: (data) => {
+      setSummaryText(data.summary);
+      toast.success("Resumo clínico gerado com sucesso.");
+    },
+    onError: () => {
+      toast.error("Erro ao gerar resumo clínico. Tente novamente.");
+    },
+  });
+
+  const saveSummary = trpc.lab.saveClinicalSummary.useMutation({
+    onSuccess: () => {
+      toast.success("Resumo clínico salvo.");
+      setIsEditingSummary(false);
+    },
+    onError: () => {
+      toast.error("Erro ao salvar resumo. Tente novamente.");
+    },
+  });
+
+  const handleStartEdit = () => {
+    setEditBuffer(summaryText);
+    setIsEditingSummary(true);
+  };
+
+  const handleCancelEdit = () => {
+    setEditBuffer("");
+    setIsEditingSummary(false);
+  };
+
+  const handleSaveEdit = () => {
+    setSummaryText(editBuffer);
+    saveSummary.mutate({ sessionId, summary: editBuffer });
+  };
 
   const filtered = useMemo(() => {
     if (!session) return [];
@@ -172,29 +225,53 @@ export default function Analysis() {
           2: { cellWidth: 18 },
           3: { cellWidth: "auto" },
         },
-        // Destaque de linhas alteradas no PDF
         didParseCell: (data: any) => {
           if (data.section === "body") {
             const exam = allExams[data.row.index];
             const sc = classifyStatus(exam?.status ?? "");
             if (sc === "elevado") {
-              data.cell.styles.fillColor = [255, 251, 235]; // amber-50
+              data.cell.styles.fillColor = [255, 251, 235];
               data.cell.styles.textColor = [120, 80, 0];
             } else if (sc === "baixo") {
-              data.cell.styles.fillColor = [239, 246, 255]; // blue-50
+              data.cell.styles.fillColor = [239, 246, 255];
               data.cell.styles.textColor = [30, 64, 175];
             } else if (sc === "alterado") {
-              data.cell.styles.fillColor = [255, 241, 242]; // red-50
+              data.cell.styles.fillColor = [255, 241, 242];
               data.cell.styles.textColor = [185, 28, 28];
             }
           }
         },
       });
 
+      // ── Resumo Clínico (se existir) ────────────────────────────────────────
+      const currentSummary = summaryText;
+      if (currentSummary) {
+        const finalY = (doc as any).lastAutoTable?.finalY ?? y;
+        let summaryY = finalY + 10;
+        const pageH = doc.internal.pageSize.getHeight();
+        if (summaryY > pageH - 40) {
+          doc.addPage();
+          summaryY = 20;
+        }
+        doc.setTextColor(30, 64, 103);
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        doc.text("Resumo Clínico", margin, summaryY);
+        summaryY += 5;
+        doc.setDrawColor(30, 64, 103);
+        doc.line(margin, summaryY, pageW - margin, summaryY);
+        summaryY += 5;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(40, 40, 40);
+        const summaryLines = doc.splitTextToSize(currentSummary, pageW - margin * 2);
+        doc.text(summaryLines, margin, summaryY);
+      }
+
       // ── Observações ────────────────────────────────────────────────────────
       if (session.observations) {
-        const finalY = (doc as any).lastAutoTable?.finalY ?? y;
-        const obsY = finalY + 8;
+        const finalY2 = (doc as any).lastAutoTable?.finalY ?? y;
+        const obsY = finalY2 + 8;
         if (obsY < doc.internal.pageSize.getHeight() - 20) {
           doc.setTextColor(30, 64, 103);
           doc.setFontSize(9);
@@ -215,7 +292,7 @@ export default function Analysis() {
         doc.setFontSize(7);
         doc.setTextColor(150, 150, 150);
         doc.text(
-          `Página ${i} de ${pageCount} — LabInterpreter — Uso exclusivo para revisão médica profissional`,
+          `Página ${i} de ${pageCount} — MedSuite — Uso exclusivo para revisão médica profissional`,
           pageW / 2,
           doc.internal.pageSize.getHeight() - 6,
           { align: "center" }
@@ -228,7 +305,7 @@ export default function Analysis() {
     } finally {
       setExportingPdf(false);
     }
-  }, [session]);
+  }, [session, summaryText]);
 
   if (isLoading) {
     return (
@@ -383,7 +460,6 @@ export default function Analysis() {
                       className={`align-top transition-colors ${rowBg} ${needsExpand ? "cursor-pointer" : ""}`}
                       onClick={needsExpand ? () => setExpandedId(isExpanded ? null : exam.id) : undefined}
                     >
-                      {/* Nome */}
                       <TableCell className="font-medium text-sm text-foreground py-3">
                         <div className="flex items-start gap-2">
                           {needsExpand && (
@@ -396,21 +472,15 @@ export default function Analysis() {
                           <span>{exam.name}</span>
                         </div>
                       </TableCell>
-
-                      {/* Resultado */}
                       <TableCell className="text-right py-3">
                         <div className="flex flex-col items-end gap-1">
                           <span className="font-mono font-semibold text-sm text-foreground">{exam.result ?? "—"}</span>
                           <StatusBadge status={exam.status ?? ""} />
                         </div>
                       </TableCell>
-
-                      {/* Unidade */}
                       <TableCell className="text-xs text-muted-foreground py-3">
                         {exam.unit || "—"}
                       </TableCell>
-
-                      {/* Valor de Referência */}
                       <TableCell className="text-xs text-muted-foreground py-3 leading-relaxed">
                         {exam.referenceRange && exam.referenceRange !== "null" ? (
                           isExpanded || !hasLongRef ? (
@@ -422,14 +492,124 @@ export default function Analysis() {
                           <span className="text-muted-foreground/50">—</span>
                         )}
                       </TableCell>
-
-
                     </TableRow>
                   );
                 })
               )}
             </TableBody>
           </Table>
+        </div>
+
+        {/* Resumo Clínico por IA */}
+        <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <div className="flex items-center justify-between p-4 border-b border-border/60">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <span className="text-sm font-semibold text-foreground">Resumo Clínico</span>
+              {summaryText && !isEditingSummary && (
+                <span className="text-[10px] bg-green-50 text-green-700 border border-green-200 px-1.5 py-0.5 rounded-full font-medium">Salvo</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {!summaryText && !generateSummary.isPending && (
+                <Button
+                  size="sm"
+                  onClick={() => generateSummary.mutate({ sessionId })}
+                  disabled={generateSummary.isPending}
+                  className="flex items-center gap-1.5 h-8 text-xs"
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Gerar com IA
+                </Button>
+              )}
+              {summaryText && !isEditingSummary && (
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => generateSummary.mutate({ sessionId })}
+                    disabled={generateSummary.isPending}
+                    className="flex items-center gap-1.5 h-8 text-xs"
+                  >
+                    {generateSummary.isPending
+                      ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      : <Sparkles className="h-3.5 w-3.5" />}
+                    {generateSummary.isPending ? "Gerando…" : "Regenerar"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleStartEdit}
+                    className="flex items-center gap-1.5 h-8 text-xs"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                    Editar
+                  </Button>
+                </>
+              )}
+              {isEditingSummary && (
+                <>
+                  <Button
+                    size="sm"
+                    onClick={handleSaveEdit}
+                    disabled={saveSummary.isPending}
+                    className="flex items-center gap-1.5 h-8 text-xs"
+                  >
+                    {saveSummary.isPending
+                      ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      : <Check className="h-3.5 w-3.5" />}
+                    Salvar
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleCancelEdit}
+                    className="flex items-center gap-1.5 h-8 text-xs"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                    Cancelar
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="p-4">
+            {generateSummary.isPending && !summaryText ? (
+              <div className="flex items-center gap-3 py-6 justify-center text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                <span className="text-sm">Analisando exames e gerando resumo clínico…</span>
+              </div>
+            ) : isEditingSummary ? (
+              <Textarea
+                value={editBuffer}
+                onChange={(e) => setEditBuffer(e.target.value)}
+                className="min-h-[160px] text-sm leading-relaxed resize-y"
+                placeholder="Digite o resumo clínico aqui…"
+                autoFocus
+              />
+            ) : summaryText ? (
+              <div className="relative">
+                {generateSummary.isPending && (
+                  <div className="absolute inset-0 bg-background/60 flex items-center justify-center rounded-lg z-10">
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  </div>
+                )}
+                <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{summaryText}</p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
+                <Sparkles className="h-8 w-8 text-muted-foreground/40" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Resumo Clínico por IA</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Clique em "Gerar com IA" para criar um resumo clínico interpretativo dos resultados.<br />
+                    O texto gerado pode ser editado antes de salvar ou exportar.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Método */}

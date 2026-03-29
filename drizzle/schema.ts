@@ -98,10 +98,10 @@ export const examSessions = mysqlTable("exam_sessions", {
   method: text("method"),
   observations: text("observations"),
   rawJson: json("rawJson"),
+  clinicalSummary: text("clinicalSummary"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
-
-export type ExamSession = typeof examSessions.$inferSelect;
+export type ExamSessionn = typeof examSessions.$inferSelect;
 export type InsertExamSession = typeof examSessions.$inferInsert;
 
 /** Exame individual dentro de uma sessão de laboratório */

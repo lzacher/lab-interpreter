@@ -89,6 +89,12 @@ export async function getExamsBySessionId(sessionId: number) {
   return db.select().from(exams).where(eq(exams.sessionId, sessionId));
 }
 
+export async function saveClinicalSummary(sessionId: number, summary: string): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  await db.update(examSessions).set({ clinicalSummary: summary }).where(eq(examSessions.id, sessionId));
+  return true;
+}
 export async function deleteSession(sessionId: number, userId: number): Promise<boolean> {
   const db = await getDb();
   if (!db) return false;

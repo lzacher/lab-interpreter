@@ -10,7 +10,9 @@ import {
   getExamsBySessionId,
   getSessionById,
   getSessionsByUserId,
+  saveClinicalSummary,
 } from "./db";
+import { invokeLLM } from "./_core/llm";
 import { documentsRouter } from "./routers/documents";
 import { imagingRouter } from "./routers/imaging";
 
@@ -150,6 +152,67 @@ const labRouter = router({
         throw new Error("Sessão não encontrada.");
       }
       await deleteSession(input.sessionId, ctx.user.id);
+      return { success: true };
+    }),
+  generateClinicalSummary: protectedProcedure
+    .input(z.object({ sessionId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const session = await getSessionById(input.sessionId);
+      if (!session || session.userId !== ctx.user.id) {
+        throw new Error("Sessão não encontrada.");
+      }
+      const examsData = await getExamsBySessionId(input.sessionId);
+      if (!examsData.length) {
+        return { summary: "Nenhum exame encontrado para gerar resumo clínico." };
+      }
+      // Montar lista de exames para o prompt
+      const examLines = examsData
+        .map((e) => {
+          const parts = [e.name];
+          if (e.result) parts.push(`resultado: ${e.result}${e.unit ? ` ${e.unit}` : ""}`);
+          if (e.referenceRange) parts.push(`referência: ${e.referenceRange}`);
+          if (e.status && e.status !== "normal") parts.push(`status: ${e.status}`);
+          return parts.join(" | ");
+        })
+        .join("\n");
+      const patientInfo = [
+        session.patientName ? `Paciente: ${session.patientName}` : "",
+        session.patientSex ? `Sexo: ${session.patientSex}` : "",
+        session.patientDob ? `Data de nascimento: ${session.patientDob}` : "",
+        session.collectionDate ? `Data da coleta: ${session.collectionDate}` : "",
+      ].filter(Boolean).join(" | ");
+      const response = await invokeLLM({
+        messages: [
+          {
+            role: "system",
+            content:
+              "Você é um assistente médico especializado em interpretação de exames laboratoriais. " +
+              "Gere um resumo clínico objetivo e profissional em português brasileiro, em 2 a 4 parágrafos. " +
+              "Destaque os achados mais relevantes (valores alterados, tendências), contextualize clinicamente e sugira atenção especial quando necessário. " +
+              "Não faça diagnósticos definitivos. Use linguagem técnica mas acessível ao médico solicitante. " +
+              "NÃO inclua títulos, cabeçalhos ou marcadores — apenas texto corrido em parágrafos.",
+          },
+          {
+            role: "user",
+            content:
+              `${patientInfo}\n\nResultados dos exames:\n${examLines}`,
+          },
+        ],
+      });
+      const summary: string =
+        (response as any)?.choices?.[0]?.message?.content ?? "Não foi possível gerar o resumo clínico.";
+      // Salvar automaticamente no banco
+      await saveClinicalSummary(input.sessionId, summary);
+      return { summary };
+    }),
+  saveClinicalSummary: protectedProcedure
+    .input(z.object({ sessionId: z.number(), summary: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const session = await getSessionById(input.sessionId);
+      if (!session || session.userId !== ctx.user.id) {
+        throw new Error("Sessão não encontrada.");
+      }
+      await saveClinicalSummary(input.sessionId, input.summary);
       return { success: true };
     }),
 });
