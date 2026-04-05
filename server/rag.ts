@@ -17,11 +17,19 @@ const MAX_CONTEXT_CHARS = 4000; // Max chars for RAG context in prompt
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-interface KnowledgeChunk {
+export interface KnowledgeChunk {
+  id: number;
   source: string;
   chunkIndex: number;
   chunkText: string;
   distance?: number;
+}
+
+export interface RagResult {
+  /** Formatted context string to inject into the LLM prompt */
+  context: string;
+  /** Chunks actually used (with id, source, text) for UI display */
+  chunks: KnowledgeChunk[];
 }
 
 // ─── DB connection ───────────────────────────────────────────────────────────
@@ -35,7 +43,6 @@ async function createRagConnection(): Promise<mysql2.Connection | null> {
   if (!dbUrl) return null;
 
   try {
-    // Parse mysql://user:pass@host:port/db?params
     const url = new URL(dbUrl);
     const conn = await mysql2.createConnection({
       host: url.hostname,
@@ -55,17 +62,13 @@ async function createRagConnection(): Promise<mysql2.Connection | null> {
 
 // ─── Embedding generation ────────────────────────────────────────────────────
 
-/**
- * Generate embeddings for a list of texts using the local Python service.
- * Falls back to empty array if service is unavailable.
- */
 async function generateEmbeddings(texts: string[]): Promise<number[][]> {
   try {
     const response = await fetch(`${EMBEDDING_SERVICE_URL}/embed`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ texts }),
-      signal: AbortSignal.timeout(10000), // 10s timeout
+      signal: AbortSignal.timeout(10000),
     });
 
     if (!response.ok) {
@@ -85,9 +88,6 @@ async function generateEmbeddings(texts: string[]): Promise<number[][]> {
 
 // ─── Vector search ───────────────────────────────────────────────────────────
 
-/**
- * Search for relevant knowledge chunks using vector similarity.
- */
 async function vectorSearch(
   embedding: number[],
   topK: number = TOP_K
@@ -99,7 +99,7 @@ async function vectorSearch(
     const embStr = "[" + embedding.map((v) => v.toFixed(6)).join(",") + "]";
 
     const [rows] = await conn.execute(
-      `SELECT source, chunk_index, chunk_text,
+      `SELECT id, source, chunk_index, chunk_text,
               VEC_COSINE_DISTANCE(embedding, ?) as dist
        FROM knowledge_base
        ORDER BY dist ASC
@@ -108,6 +108,7 @@ async function vectorSearch(
     );
 
     return (rows as any[]).map((row: any) => ({
+      id: Number(row.id),
       source: row.source as string,
       chunkIndex: row.chunk_index as number,
       chunkText: (row.chunk_text as string) ?? "",
@@ -124,44 +125,41 @@ async function vectorSearch(
 // ─── Main RAG function ───────────────────────────────────────────────────────
 
 /**
- * Build a RAG context string for clinical summary generation.
+ * Build a RAG context string and return the chunks used.
  *
  * @param examNames - List of exam names from the lab results
  * @param examValues - Optional list of exam values with status
- * @returns Formatted context string to inject into the LLM prompt
+ * @returns { context, chunks } — context for LLM, chunks for UI display
  */
 export async function buildRagContext(
   examNames: string[],
   examValues?: Array<{ name: string; value: string; status?: string }>
-): Promise<string> {
+): Promise<RagResult> {
   if (examNames.length === 0) {
-    return "";
+    return { context: "", chunks: [] };
   }
 
-  // Build query from exam names and abnormal values
   const abnormalExams = examValues?.filter(
     (e) => e.status === "high" || e.status === "low" || e.status === "critical"
   );
 
   const queryParts = [
-    ...examNames.slice(0, 10), // Top 10 exam names
+    ...examNames.slice(0, 10),
     ...(abnormalExams?.map((e) => `${e.name} ${e.status}`) || []),
     "interpretation clinical significance reference values",
   ];
 
   const query = queryParts.join(" ");
 
-  // Generate embedding for the query
   const embeddings = await generateEmbeddings([query]);
   if (embeddings.length === 0) {
     console.warn("[RAG] No embeddings generated, skipping RAG context");
-    return "";
+    return { context: "", chunks: [] };
   }
 
-  // Search for relevant chunks
   const chunks = await vectorSearch(embeddings[0], TOP_K);
   if (chunks.length === 0) {
-    return "";
+    return { context: "", chunks: [] };
   }
 
   // Format context for the prompt
@@ -181,12 +179,12 @@ export async function buildRagContext(
     const chunkTotal = chunkHeader.length + chunkContent.length;
 
     if (totalChars + chunkTotal > MAX_CONTEXT_CHARS) {
-      // Truncate to fit
       const remaining =
         MAX_CONTEXT_CHARS - totalChars - chunkHeader.length - 10;
       if (remaining > 100) {
         context +=
           chunkHeader + chunkText.substring(0, remaining) + "...\n\n";
+        usedChunks.push({ ...chunk, chunkText: chunkText.substring(0, remaining) + "..." });
       }
       break;
     }
@@ -200,7 +198,68 @@ export async function buildRagContext(
     `[RAG] Retrieved ${usedChunks.length} chunks (${totalChars} chars) for query: "${query.substring(0, 60)}..."`
   );
 
-  return context;
+  return { context, chunks: usedChunks };
+}
+
+// ─── Feedback ────────────────────────────────────────────────────────────────
+
+/**
+ * Save or update a user's vote on a RAG chunk.
+ * Uses INSERT ... ON DUPLICATE KEY UPDATE to handle re-votes.
+ */
+export async function saveRagFeedback(
+  chunkId: number,
+  sessionId: number,
+  userId: number,
+  vote: "up" | "down"
+): Promise<boolean> {
+  const conn = await createRagConnection();
+  if (!conn) return false;
+
+  try {
+    await conn.execute(
+      `INSERT INTO rag_feedback (chunk_id, session_id, user_id, vote)
+       VALUES (?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE vote = VALUES(vote)`,
+      [chunkId, sessionId, userId, vote]
+    );
+    return true;
+  } catch (error) {
+    console.warn("[RAG] Save feedback error:", error);
+    return false;
+  } finally {
+    await conn.end();
+  }
+}
+
+/**
+ * Get all feedback votes for a given session and user.
+ * Returns a map of chunkId → vote.
+ */
+export async function getRagFeedbackForSession(
+  sessionId: number,
+  userId: number
+): Promise<Record<number, "up" | "down">> {
+  const conn = await createRagConnection();
+  if (!conn) return {};
+
+  try {
+    const [rows] = await conn.execute(
+      `SELECT chunk_id, vote FROM rag_feedback WHERE session_id = ? AND user_id = ?`,
+      [sessionId, userId]
+    );
+
+    const result: Record<number, "up" | "down"> = {};
+    for (const row of rows as any[]) {
+      result[Number(row.chunk_id)] = row.vote as "up" | "down";
+    }
+    return result;
+  } catch (error) {
+    console.warn("[RAG] Get feedback error:", error);
+    return {};
+  } finally {
+    await conn.end();
+  }
 }
 
 /**

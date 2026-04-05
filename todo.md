@@ -214,3 +214,15 @@
 - [x] Integrar RAG na procedure generateClinicalSummary do routers.ts
 - [x] Servidor inicia microserviço de embeddings automaticamente (server/_core/index.ts)
 - [x] Testes validados: busca vetorial retorna chunks relevantes para exames renais, hepáticos, etc.
+
+## Feature: Feedback de trechos RAG (👍/👎)
+- [x] Schema: tabela rag_feedback (id, chunk_id, session_id, user_id, vote, created_at)
+- [x] Schema: adicionar campo id à tabela knowledge_base (se não existir)
+- [x] Backend: procedure submitRagFeedback (salva voto no banco)
+- [x] Backend: procedure getRagFeedback (retorna votos por sessão)
+- [x] RAG: retornar chunks com id e texto junto ao resumo clínico
+- [x] Backend: generateClinicalSummary retorna também os chunks usados (com id, source, text)
+- [x] Frontend: exibir seção "Fontes consultadas" abaixo do resumo clínico
+- [x] Frontend: cada fonte mostra: nome do livro, trecho truncado, botões 👍/👎
+- [x] Frontend: estado de feedback persiste (botão ativo após votar)
+- [x] Frontend: feedback enviado via trpc.lab.submitRagFeedback

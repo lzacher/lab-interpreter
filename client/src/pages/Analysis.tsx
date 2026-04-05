@@ -30,6 +30,9 @@ import {
   Pencil,
   Check,
   X,
+  ThumbsUp,
+  ThumbsDown,
+  BookOpen,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -72,6 +75,10 @@ export default function Analysis() {
   const [summaryText, setSummaryText] = useState("");
   const [isEditingSummary, setIsEditingSummary] = useState(false);
   const [editBuffer, setEditBuffer] = useState("");
+  // RAG chunks retornados pelo generateClinicalSummary
+  const [ragChunks, setRagChunks] = useState<Array<{ id: number; source: string; chunkText: string }>>([]);
+  // Votos locais: chunkId → "up" | "down"
+  const [localVotes, setLocalVotes] = useState<Record<number, "up" | "down">>({}); 
 
   const { data: session, isLoading } = trpc.lab.getSession.useQuery(
     { sessionId },
@@ -88,12 +95,44 @@ export default function Analysis() {
   const generateSummary = trpc.lab.generateClinicalSummary.useMutation({
     onSuccess: (data) => {
       setSummaryText(data.summary);
+      if (data.ragChunks && data.ragChunks.length > 0) {
+        setRagChunks(data.ragChunks);
+        setLocalVotes({});
+      }
       toast.success("Resumo clínico gerado com sucesso.");
     },
     onError: () => {
       toast.error("Erro ao gerar resumo clínico. Tente novamente.");
     },
   });
+
+  // Carregar votos existentes para esta sessão
+  const { data: feedbackData } = trpc.lab.getRagFeedback.useQuery(
+    { sessionId },
+    { enabled: !!sessionId && ragChunks.length > 0 }
+  );
+  useEffect(() => {
+    if (feedbackData?.votes) {
+      setLocalVotes(feedbackData.votes as Record<number, "up" | "down">);
+    }
+  }, [feedbackData]);
+
+  const submitFeedback = trpc.lab.submitRagFeedback.useMutation({
+    onSuccess: () => {},
+    onError: () => { toast.error("Erro ao registrar feedback."); },
+  });
+
+  const handleVote = (chunkId: number, vote: "up" | "down") => {
+    // Toggle: se já votou igual, remove; senão, aplica novo voto
+    const current = localVotes[chunkId];
+    if (current === vote) {
+      // Remove vote locally (no undo endpoint needed — just UI)
+      setLocalVotes((prev) => { const n = { ...prev }; delete n[chunkId]; return n; });
+    } else {
+      setLocalVotes((prev) => ({ ...prev, [chunkId]: vote }));
+      submitFeedback.mutate({ chunkId, sessionId, vote });
+    }
+  };
 
   const saveSummary = trpc.lab.saveClinicalSummary.useMutation({
     onSuccess: () => {
@@ -610,6 +649,59 @@ export default function Analysis() {
               </div>
             )}
           </div>
+
+          {/* Fontes RAG com feedback */}
+          {ragChunks.length > 0 && !isEditingSummary && (
+            <div className="border-t border-border/60">
+              <div className="px-4 py-3 flex items-center gap-2">
+                <BookOpen className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Fontes consultadas</span>
+                <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full">{ragChunks.length}</span>
+              </div>
+              <div className="px-4 pb-4 flex flex-col gap-3">
+                {ragChunks.map((chunk) => {
+                  const vote = localVotes[chunk.id];
+                  return (
+                    <div
+                      key={chunk.id}
+                      className="rounded-lg border border-border/70 bg-muted/30 p-3 flex flex-col gap-2"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] font-semibold text-primary mb-1 truncate">{chunk.source}</p>
+                          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{chunk.chunkText}</p>
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <button
+                            onClick={() => handleVote(chunk.id, "up")}
+                            title="Este trecho foi útil"
+                            className={`p-1.5 rounded-md transition-colors ${
+                              vote === "up"
+                                ? "bg-green-100 text-green-700 border border-green-300"
+                                : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                            }`}
+                          >
+                            <ThumbsUp className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleVote(chunk.id, "down")}
+                            title="Este trecho não foi útil"
+                            className={`p-1.5 rounded-md transition-colors ${
+                              vote === "down"
+                                ? "bg-red-100 text-red-700 border border-red-300"
+                                : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                            }`}
+                          >
+                            <ThumbsDown className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Método */}

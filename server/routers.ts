@@ -13,7 +13,7 @@ import {
   saveClinicalSummary,
 } from "./db";
 import { invokeLLM } from "./_core/llm";
-import { buildRagContext } from "./rag";
+import { buildRagContext, saveRagFeedback, getRagFeedbackForSession, KnowledgeChunk } from "./rag";
 import { documentsRouter } from "./routers/documents";
 import { imagingRouter } from "./routers/imaging";
 
@@ -189,7 +189,7 @@ const labRouter = router({
         value: e.result ?? "",
         status: e.status ?? undefined,
       }));
-      const ragContext = await buildRagContext(examNames, examValues);
+      const { context: ragContext, chunks: ragChunks } = await buildRagContext(examNames, examValues);
 
       const systemPrompt =
         "Você é um assistente médico especializado em interpretação de exames laboratoriais. " +
@@ -215,7 +215,15 @@ const labRouter = router({
         (response as any)?.choices?.[0]?.message?.content ?? "Não foi possível gerar o resumo clínico.";
       // Salvar automaticamente no banco
       await saveClinicalSummary(input.sessionId, summary);
-      return { summary };
+      // Return summary + RAG chunks for UI display
+      return {
+        summary,
+        ragChunks: ragChunks.map((c) => ({
+          id: c.id,
+          source: c.source,
+          chunkText: c.chunkText.substring(0, 400), // truncate for UI
+        })),
+      };
     }),
   saveClinicalSummary: protectedProcedure
     .input(z.object({ sessionId: z.number(), summary: z.string() }))
@@ -226,6 +234,35 @@ const labRouter = router({
       }
       await saveClinicalSummary(input.sessionId, input.summary);
       return { success: true };
+    }),
+
+  // ─── RAG Feedback ─────────────────────────────────────────────────────────────
+
+  /** Submit a thumbs-up or thumbs-down vote on a RAG chunk */
+  submitRagFeedback: protectedProcedure
+    .input(
+      z.object({
+        chunkId: z.number(),
+        sessionId: z.number(),
+        vote: z.enum(["up", "down"]),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const ok = await saveRagFeedback(
+        input.chunkId,
+        input.sessionId,
+        ctx.user.id,
+        input.vote
+      );
+      return { success: ok };
+    }),
+
+  /** Get all RAG feedback votes for a session (current user only) */
+  getRagFeedback: protectedProcedure
+    .input(z.object({ sessionId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const votes = await getRagFeedbackForSession(input.sessionId, ctx.user.id);
+      return { votes };
     }),
 });
 
