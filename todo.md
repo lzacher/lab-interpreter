@@ -204,3 +204,13 @@
 - [ ] Criar procedure saveClinicalSummary para persistir edições do usuário
 - [ ] Implementar seção de resumo clínico editável na tela Analysis.tsx
 - [ ] Incluir resumo clínico no PDF exportado
+
+## Feature: RAG com livros médicos de referência
+- [x] Extrair texto dos livros Wallach's e Guia Completo de Exames Laboratoriais (PDFs)
+- [x] Criar tabela knowledge_base no TiDB com suporte a VECTOR(384)
+- [x] Indexar 787 chunks dos livros com embeddings all-MiniLM-L6-v2 (Python)
+- [x] Criar microserviço Python de embeddings (embedding_service.py, porta 5001)
+- [x] Criar módulo server/rag.ts com busca vetorial via mysql2 diretamente
+- [x] Integrar RAG na procedure generateClinicalSummary do routers.ts
+- [x] Servidor inicia microserviço de embeddings automaticamente (server/_core/index.ts)
+- [x] Testes validados: busca vetorial retorna chunks relevantes para exames renais, hepáticos, etc.

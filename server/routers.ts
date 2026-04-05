@@ -13,6 +13,7 @@ import {
   saveClinicalSummary,
 } from "./db";
 import { invokeLLM } from "./_core/llm";
+import { buildRagContext } from "./rag";
 import { documentsRouter } from "./routers/documents";
 import { imagingRouter } from "./routers/imaging";
 
@@ -181,22 +182,33 @@ const labRouter = router({
         session.patientDob ? `Data de nascimento: ${session.patientDob}` : "",
         session.collectionDate ? `Data da coleta: ${session.collectionDate}` : "",
       ].filter(Boolean).join(" | ");
+      // Build RAG context from medical reference books
+      const examNames = examsData.map((e) => e.name).filter(Boolean) as string[];
+      const examValues = examsData.map((e) => ({
+        name: e.name ?? "",
+        value: e.result ?? "",
+        status: e.status ?? undefined,
+      }));
+      const ragContext = await buildRagContext(examNames, examValues);
+
+      const systemPrompt =
+        "Você é um assistente médico especializado em interpretação de exames laboratoriais. " +
+        "Gere um resumo clínico objetivo e profissional em português brasileiro, em 2 a 4 parágrafos. " +
+        "Destaque os achados mais relevantes (valores alterados, tendências), contextualize clinicamente e sugira atenção especial quando necessário. " +
+        "Não faça diagnósticos definitivos. Use linguagem técnica mas acessível ao médico solicitante. " +
+        (ragContext
+          ? "Use as referências de literatura médica fornecidas para embasar sua interpretação quando relevante. "
+          : "") +
+        "NÃO inclua títulos, cabeçalhos ou marcadores — apenas texto corrido em parágrafos.";
+
+      const userContent = ragContext
+        ? `${patientInfo}\n\nResultados dos exames:\n${examLines}\n\n${ragContext}`
+        : `${patientInfo}\n\nResultados dos exames:\n${examLines}`;
+
       const response = await invokeLLM({
         messages: [
-          {
-            role: "system",
-            content:
-              "Você é um assistente médico especializado em interpretação de exames laboratoriais. " +
-              "Gere um resumo clínico objetivo e profissional em português brasileiro, em 2 a 4 parágrafos. " +
-              "Destaque os achados mais relevantes (valores alterados, tendências), contextualize clinicamente e sugira atenção especial quando necessário. " +
-              "Não faça diagnósticos definitivos. Use linguagem técnica mas acessível ao médico solicitante. " +
-              "NÃO inclua títulos, cabeçalhos ou marcadores — apenas texto corrido em parágrafos.",
-          },
-          {
-            role: "user",
-            content:
-              `${patientInfo}\n\nResultados dos exames:\n${examLines}`,
-          },
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userContent },
         ],
       });
       const summary: string =
