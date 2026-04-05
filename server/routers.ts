@@ -13,6 +13,7 @@ import {
   saveClinicalSummary,
 } from "./db";
 import { invokeLLM } from "./_core/llm";
+import { getRagEngine } from "./wallachsRag";
 import { documentsRouter } from "./routers/documents";
 import { imagingRouter } from "./routers/imaging";
 
@@ -181,16 +182,35 @@ const labRouter = router({
         session.patientDob ? `Data de nascimento: ${session.patientDob}` : "",
         session.collectionDate ? `Data da coleta: ${session.collectionDate}` : "",
       ].filter(Boolean).join(" | ");
+      // ── RAG: recuperar contexto clínico relevante do Wallach's + Caquet ──
+      let ragContext = "";
+      try {
+        const ragEngine = getRagEngine();
+        await ragEngine.initialize();
+        const examNames = examsData.map((e) => e.name);
+        const examStatuses = examsData.map((e) => e.status ?? "");
+        const ragResult = await ragEngine.retrieve(examNames, examStatuses, 6);
+        ragContext = ragResult.formattedContext;
+      } catch (ragErr) {
+        // RAG é opcional — falha silenciosa para não bloquear o fluxo principal
+        console.warn("[RAG] Falha ao recuperar contexto:", ragErr);
+      }
+
+      const systemPrompt =
+        "Você é um assistente médico especializado em interpretação de exames laboratoriais. " +
+        "Gere um resumo clínico objetivo e profissional em português brasileiro, em 2 a 4 parágrafos. " +
+        "Destaque os achados mais relevantes (valores alterados, tendências), contextualize clinicamente e sugira atenção especial quando necessário. " +
+        "Não faça diagnósticos definitivos. Use linguagem técnica mas acessível ao médico solicitante. " +
+        "NÃO inclua títulos, cabeçalhos ou marcadores — apenas texto corrido em parágrafos." +
+        (ragContext
+          ? "\n\nUse as informações da base de conhecimento clínico abaixo para enriquecer sua interpretação com valores de referência e contexto clínico baseado em evidências:\n" + ragContext
+          : "");
+
       const response = await invokeLLM({
         messages: [
           {
             role: "system",
-            content:
-              "Você é um assistente médico especializado em interpretação de exames laboratoriais. " +
-              "Gere um resumo clínico objetivo e profissional em português brasileiro, em 2 a 4 parágrafos. " +
-              "Destaque os achados mais relevantes (valores alterados, tendências), contextualize clinicamente e sugira atenção especial quando necessário. " +
-              "Não faça diagnósticos definitivos. Use linguagem técnica mas acessível ao médico solicitante. " +
-              "NÃO inclua títulos, cabeçalhos ou marcadores — apenas texto corrido em parágrafos.",
+            content: systemPrompt,
           },
           {
             role: "user",

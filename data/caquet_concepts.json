@@ -1,0 +1,2199 @@
+{
+  "metadata": {
+    "source": "250 Exames de Laboratório: Prescrição e Interpretação - 12ª edição",
+    "author": "René Caquet",
+    "translator": "Laís Medeiros, Bruna Steffens, Janyne Martini",
+    "publisher": "Thieme Revinter Publicações, 2017",
+    "isbn": "978-85-67661-45-2",
+    "language": "pt-BR",
+    "totalConcepts": 113,
+    "generatedAt": "2026-04-04T20:46:48.920645",
+    "version": "1.0.0"
+  },
+  "concepts": [
+    {
+      "id": "caquet_1",
+      "term": "Ácido úrico (homem)",
+      "definition": "Valores de referência: 40 a 60 mg/L (unidades tradicionais) / 240 a 360 μmol/L (SI). Significado clínico: Metabolismo de purinas.",
+      "chapter": "Parâmetros Bioquímicos - Sangue",
+      "specialty": "bioquímica",
+      "context": "",
+      "keywords": [
+        "ácido",
+        "referência",
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "ranges": [
+          {
+            "min": "40",
+            "max": "60",
+            "unit": "mg/L"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_2",
+      "term": "ACTH (8h manhã)",
+      "definition": "Valores de referência: < 50 pg/mL (unidades tradicionais) / < 10 μmol/L (SI). Significado clínico: Função adrenal.",
+      "chapter": "Parâmetros Bioquímicos - Sangue",
+      "specialty": "bioquímica",
+      "context": "",
+      "keywords": [
+        "renal",
+        "referência",
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "limits": [
+          {
+            "operator": "<",
+            "value": "50",
+            "unit": "pg/mL"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_3",
+      "term": "Albumina",
+      "definition": "Valores de referência: 40 a 50 g/L (unidades tradicionais) / 650 a 800 μmol/L (SI). Significado clínico: Estado nutricional, função hepática.",
+      "chapter": "Parâmetros Bioquímicos - Sangue",
+      "specialty": "bioquímica",
+      "context": "",
+      "keywords": [
+        "albumin",
+        "albumina",
+        "referência",
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "ranges": [
+          {
+            "min": "40",
+            "max": "50",
+            "unit": "g/L"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_4",
+      "term": "Amoníaco (sangue arterial)",
+      "definition": "Valores de referência: < 0,5 mg/L (unidades tradicionais) / < 15 μmol/L (SI). Significado clínico: Função hepática.",
+      "chapter": "Parâmetros Bioquímicos - Sangue",
+      "specialty": "bioquímica",
+      "context": "",
+      "keywords": [
+        "referência",
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "limits": [
+          {
+            "operator": "<",
+            "value": "0,5",
+            "unit": "mg/L"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_5",
+      "term": "Amilase",
+      "definition": "Valores de referência: 10 a 45 UI/L (unidades tradicionais) / 10 a 45 UI/L (SI). Significado clínico: Função pancreática.",
+      "chapter": "Parâmetros Bioquímicos - Sangue",
+      "specialty": "bioquímica",
+      "context": "",
+      "keywords": [
+        "referência",
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "ranges": [
+          {
+            "min": "10",
+            "max": "45",
+            "unit": "UI/L"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_6",
+      "term": "Apolipoproteína A1",
+      "definition": "Valores de referência: 1,20 a 1,80 g/L (unidades tradicionais) / — (SI). Significado clínico: Metabolismo lipídico.",
+      "chapter": "Parâmetros Bioquímicos - Sangue",
+      "specialty": "bioquímica",
+      "context": "",
+      "keywords": [
+        "proteína",
+        "referência",
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "ranges": [
+          {
+            "min": "1,20",
+            "max": "1,80",
+            "unit": "g/L"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_7",
+      "term": "Bicarbonatos (adulto)",
+      "definition": "Valores de referência: 22 a 26 mEq/L (unidades tradicionais) / 22 a 26 mmol/L (SI). Significado clínico: Equilíbrio ácido-base.",
+      "chapter": "Parâmetros Bioquímicos - Sangue",
+      "specialty": "bioquímica",
+      "context": "",
+      "keywords": [
+        "ácido",
+        "referência",
+        "valor",
+        "bicarbonato"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "ranges": [
+          {
+            "min": "22",
+            "max": "26",
+            "unit": "mEq/L"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_8",
+      "term": "Bilirrubina",
+      "definition": "Valores de referência: < 12 mg/L (unidades tradicionais) / < 20 μmol/L (SI). Significado clínico: Função hepática, hemólise.",
+      "chapter": "Parâmetros Bioquímicos - Sangue",
+      "specialty": "bioquímica",
+      "context": "",
+      "keywords": [
+        "bilirrubina",
+        "referência",
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "limits": [
+          {
+            "operator": "<",
+            "value": "12",
+            "unit": "mg/L"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_9",
+      "term": "Cálcio",
+      "definition": "Valores de referência: 95 a 105 mg/L (unidades tradicionais) / 2,2 a 2,6 mmol/L (SI). Significado clínico: Metabolismo ósseo.",
+      "chapter": "Parâmetros Bioquímicos - Sangue",
+      "specialty": "bioquímica",
+      "context": "",
+      "keywords": [
+        "referência",
+        "valor",
+        "cálcio"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "ranges": [
+          {
+            "min": "95",
+            "max": "105",
+            "unit": "mg/L"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_10",
+      "term": "Colesterol (adulto > 50 anos)",
+      "definition": "Valores de referência: < 2 g/L (unidades tradicionais) / < 5 mmol/L (SI). Significado clínico: Risco cardiovascular.",
+      "chapter": "Parâmetros Bioquímicos - Sangue",
+      "specialty": "bioquímica",
+      "context": "",
+      "keywords": [
+        "cardiovascular",
+        "referência",
+        "colesterol",
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "limits": [
+          {
+            "operator": "<",
+            "value": "2",
+            "unit": "g/L"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_11",
+      "term": "Cortisol (manhã)",
+      "definition": "Valores de referência: 50 a 200 ng/mL (unidades tradicionais) / 0,15 a 0,7 μmol/L (SI). Significado clínico: Função adrenal.",
+      "chapter": "Parâmetros Bioquímicos - Sangue",
+      "specialty": "bioquímica",
+      "context": "",
+      "keywords": [
+        "renal",
+        "referência",
+        "valor",
+        "cortisol"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "ranges": [
+          {
+            "min": "50",
+            "max": "200",
+            "unit": "ng/mL"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_12",
+      "term": "Creatinina (homem adulto)",
+      "definition": "Valores de referência: 9 a 15 mg/L (unidades tradicionais) / 80 a 120 μmol/L (SI). Significado clínico: Função renal.",
+      "chapter": "Parâmetros Bioquímicos - Sangue",
+      "specialty": "bioquímica",
+      "context": "",
+      "keywords": [
+        "renal",
+        "creatinina",
+        "referência",
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "ranges": [
+          {
+            "min": "9",
+            "max": "15",
+            "unit": "mg/L"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_13",
+      "term": "Ferro (homem adulto)",
+      "definition": "Valores de referência: 65 a 180 μg/dL (unidades tradicionais) / 12 a 30 μmol/L (SI). Significado clínico: Metabolismo do ferro.",
+      "chapter": "Parâmetros Bioquímicos - Sangue",
+      "specialty": "bioquímica",
+      "context": "",
+      "keywords": [
+        "referência",
+        "valor",
+        "ferro"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "ranges": [
+          {
+            "min": "65",
+            "max": "180",
+            "unit": "μg/dL"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_14",
+      "term": "Fibrinogênio",
+      "definition": "Valores de referência: 2 a 4 g/L (unidades tradicionais) / 2 a 4 g/L (SI). Significado clínico: Coagulação.",
+      "chapter": "Parâmetros Bioquímicos - Sangue",
+      "specialty": "bioquímica",
+      "context": "",
+      "keywords": [
+        "referência",
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "ranges": [
+          {
+            "min": "2",
+            "max": "4",
+            "unit": "g/L"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_15",
+      "term": "FSH (fase folicular)",
+      "definition": "Valores de referência: 2 a 10 UI/L (unidades tradicionais) / 2 a 10 UI/L (SI). Significado clínico: Função reprodutiva.",
+      "chapter": "Parâmetros Bioquímicos - Sangue",
+      "specialty": "bioquímica",
+      "context": "",
+      "keywords": [
+        "referência",
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "ranges": [
+          {
+            "min": "2",
+            "max": "10",
+            "unit": "UI/L"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_16",
+      "term": "Gamma-GT",
+      "definition": "Valores de referência: < 35 UI/L (unidades tradicionais) / < 35 UI/L (SI). Significado clínico: Função hepática.",
+      "chapter": "Parâmetros Bioquímicos - Sangue",
+      "specialty": "bioquímica",
+      "context": "",
+      "keywords": [
+        "referência",
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "limits": [
+          {
+            "operator": "<",
+            "value": "35",
+            "unit": "UI/L"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_17",
+      "term": "Glicose",
+      "definition": "Valores de referência: 0,60 a 0,9 g/L (unidades tradicionais) / 3,5 a 5 mmol/L (SI). Significado clínico: Metabolismo de carboidratos.",
+      "chapter": "Parâmetros Bioquímicos - Sangue",
+      "specialty": "bioquímica",
+      "context": "",
+      "keywords": [
+        "glicose",
+        "referência",
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "ranges": [
+          {
+            "min": "0,60",
+            "max": "0,9",
+            "unit": "g/L"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_18",
+      "term": "Haptoglobina",
+      "definition": "Valores de referência: 0,5 a 1,5 g/L (unidades tradicionais) / 6 a 18 mmol/L (SI). Significado clínico: Hemólise.",
+      "chapter": "Parâmetros Bioquímicos - Sangue",
+      "specialty": "bioquímica",
+      "context": "",
+      "keywords": [
+        "referência",
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "ranges": [
+          {
+            "min": "0,5",
+            "max": "1,5",
+            "unit": "g/L"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_19",
+      "term": "Imunoglobulina IgG",
+      "definition": "Valores de referência: 8 a 16 g/L (unidades tradicionais) / — (SI). Significado clínico: Imunidade.",
+      "chapter": "Parâmetros Bioquímicos - Sangue",
+      "specialty": "bioquímica",
+      "context": "",
+      "keywords": [
+        "valor",
+        "referência",
+        "imunoglobulina"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "ranges": [
+          {
+            "min": "8",
+            "max": "16",
+            "unit": "g/L"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_20",
+      "term": "Imunoglobulina IgM",
+      "definition": "Valores de referência: 0,5 a 2 g/L (unidades tradicionais) / — (SI). Significado clínico: Imunidade.",
+      "chapter": "Parâmetros Bioquímicos - Sangue",
+      "specialty": "bioquímica",
+      "context": "",
+      "keywords": [
+        "valor",
+        "referência",
+        "imunoglobulina"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "ranges": [
+          {
+            "min": "0,5",
+            "max": "2",
+            "unit": "g/L"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_21",
+      "term": "LDH (adulto)",
+      "definition": "Valores de referência: 100 a 240 UI/L (unidades tradicionais) / 100 a 240 UI/L (SI). Significado clínico: Dano tecidual.",
+      "chapter": "Parâmetros Bioquímicos - Sangue",
+      "specialty": "bioquímica",
+      "context": "",
+      "keywords": [
+        "referência",
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "ranges": [
+          {
+            "min": "100",
+            "max": "240",
+            "unit": "UI/L"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_22",
+      "term": "Magnésio (soro)",
+      "definition": "Valores de referência: 18 a 22 mg/L (unidades tradicionais) / 0,75 a 0,9 mmol/L (SI). Significado clínico: Metabolismo mineral.",
+      "chapter": "Parâmetros Bioquímicos - Sangue",
+      "specialty": "bioquímica",
+      "context": "",
+      "keywords": [
+        "referência",
+        "valor",
+        "magnésio"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "ranges": [
+          {
+            "min": "18",
+            "max": "22",
+            "unit": "mg/L"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_23",
+      "term": "Fosfatases alcalinas (adultos)",
+      "definition": "Valores de referência: 50 a 130 UI/L (unidades tradicionais) / 50 a 130 UI/L (SI). Significado clínico: Colestase, metabolismo ósseo.",
+      "chapter": "Parâmetros Bioquímicos - Sangue",
+      "specialty": "bioquímica",
+      "context": "",
+      "keywords": [
+        "referência",
+        "fosfatase",
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "ranges": [
+          {
+            "min": "50",
+            "max": "130",
+            "unit": "UI/L"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_24",
+      "term": "Fósforo (adulto)",
+      "definition": "Valores de referência: 25 a 50 mg/L (unidades tradicionais) / 0,8 a 1,6 mmol/L (SI). Significado clínico: Metabolismo mineral.",
+      "chapter": "Parâmetros Bioquímicos - Sangue",
+      "specialty": "bioquímica",
+      "context": "",
+      "keywords": [
+        "valor",
+        "referência",
+        "fósforo"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "ranges": [
+          {
+            "min": "25",
+            "max": "50",
+            "unit": "mg/L"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_25",
+      "term": "Proteínas séricas totais",
+      "definition": "Valores de referência: 60 a 80 g/L (unidades tradicionais) / 60 a 80 g/L (SI). Significado clínico: Estado nutricional.",
+      "chapter": "Parâmetros Bioquímicos - Sangue",
+      "specialty": "bioquímica",
+      "context": "",
+      "keywords": [
+        "proteína",
+        "referência",
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "ranges": [
+          {
+            "min": "60",
+            "max": "80",
+            "unit": "g/L"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_26",
+      "term": "Taxa de protrombina",
+      "definition": "Valores de referência: 80 a 100% (unidades tradicionais) / 12 a 15 s (SI). Significado clínico: Coagulação.",
+      "chapter": "Parâmetros Bioquímicos - Sangue",
+      "specialty": "bioquímica",
+      "context": "",
+      "keywords": [
+        "referência",
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_27",
+      "term": "ASAT (TGO)",
+      "definition": "Valores de referência: 5 a 40 UI/L (30°C) (unidades tradicionais) / 5 a 40 UI/L (SI). Significado clínico: Dano hepatocelular.",
+      "chapter": "Parâmetros Bioquímicos - Sangue",
+      "specialty": "bioquímica",
+      "context": "",
+      "keywords": [
+        "referência",
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "ranges": [
+          {
+            "min": "5",
+            "max": "40",
+            "unit": "UI/L"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_28",
+      "term": "ALAT (TGP)",
+      "definition": "Valores de referência: 5 a 35 UI/L (30°C) (unidades tradicionais) / 5 a 35 UI/L (SI). Significado clínico: Dano hepatocelular.",
+      "chapter": "Parâmetros Bioquímicos - Sangue",
+      "specialty": "bioquímica",
+      "context": "",
+      "keywords": [
+        "referência",
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "ranges": [
+          {
+            "min": "5",
+            "max": "35",
+            "unit": "UI/L"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_29",
+      "term": "Triglicerídeos (adulto)",
+      "definition": "Valores de referência: < 1,30 g/L (unidades tradicionais) / < 1,6 mmol/L (SI). Significado clínico: Metabolismo lipídico.",
+      "chapter": "Parâmetros Bioquímicos - Sangue",
+      "specialty": "bioquímica",
+      "context": "",
+      "keywords": [
+        "triglicerídeos",
+        "referência",
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "limits": [
+          {
+            "operator": "<",
+            "value": "1,30",
+            "unit": "g/L"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_30",
+      "term": "VS após 1 hora",
+      "definition": "Valores de referência: 3 a 8 mm (unidades tradicionais) / 3 a 8 mm (SI). Significado clínico: Inflamação.",
+      "chapter": "Parâmetros Bioquímicos - Sangue",
+      "specialty": "bioquímica",
+      "context": "",
+      "keywords": [
+        "valor",
+        "referência",
+        "inflamação"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "ranges": [
+          {
+            "min": "3",
+            "max": "8",
+            "unit": "mm"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_31",
+      "term": "PaO₂",
+      "definition": "Valores normais na gasometria arterial: 90 a 100 mmHg (12 a 13,3 kPa). Parâmetro fundamental para avaliação do equilíbrio ácido-base e oxigenação.",
+      "chapter": "Gasometria Arterial",
+      "specialty": "pneumologia",
+      "context": "",
+      "keywords": [
+        "ácido",
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_32",
+      "term": "SaO₂",
+      "definition": "Valores normais na gasometria arterial: 95 a 98%. Parâmetro fundamental para avaliação do equilíbrio ácido-base e oxigenação.",
+      "chapter": "Gasometria Arterial",
+      "specialty": "pneumologia",
+      "context": "",
+      "keywords": [
+        "ácido",
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_33",
+      "term": "PaCO₂",
+      "definition": "Valores normais na gasometria arterial: 35 a 45 mmHg (4,7 a 5,3 kPa). Parâmetro fundamental para avaliação do equilíbrio ácido-base e oxigenação.",
+      "chapter": "Gasometria Arterial",
+      "specialty": "pneumologia",
+      "context": "",
+      "keywords": [
+        "ácido",
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_34",
+      "term": "pH (sangue arterial)",
+      "definition": "Valores normais na gasometria arterial: 7,38 a 7,42. Parâmetro fundamental para avaliação do equilíbrio ácido-base e oxigenação.",
+      "chapter": "Gasometria Arterial",
+      "specialty": "pneumologia",
+      "context": "",
+      "keywords": [
+        "ácido",
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_35",
+      "term": "Ionograma Plasmático",
+      "definition": "Ionograma plasmático normal: Sódio 137-143 mEq/L, Potássio 3,5-4,5 mEq/L, Cálcio 95-105 mg/L, Cloretos 100-110 mEq/L, Bicarbonatos 22-26 mEq/L. Total de ânions e cátions: 155 mEq cada.",
+      "chapter": "Ionograma Plasmático",
+      "specialty": "nefrologia",
+      "context": "",
+      "keywords": [
+        "sódio",
+        "normal",
+        "cálcio",
+        "bicarbonato",
+        "potássio",
+        "cloreto"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_36",
+      "term": "Eletroforese de Proteínas Séricas",
+      "definition": "Frações normais: Albumina 60% (43 g/L), α₁-globulinas 2,5-6% (3 g/L), α₂-globulinas 6-10% (6 g/L), β-globulinas 10-15% (9 g/L), γ-globulinas 14-20% (12 g/L). Alterações indicam disproteinemias, inflamação, doenças hepáticas ou hematológicas.",
+      "chapter": "Eletroforese de Proteínas Séricas",
+      "specialty": "hematologia",
+      "context": "",
+      "keywords": [
+        "albumina",
+        "albumin",
+        "proteína",
+        "doença",
+        "alt",
+        "inflamação"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_37",
+      "term": "Ácido úrico (adulto) (urina)",
+      "definition": "Valores de referência urinários: 0,200 a 0,650 g/L (unidades tradicionais) / 1,5 a 4,8 mmol/24h (SI).",
+      "chapter": "Parâmetros Urinários",
+      "specialty": "nefrologia",
+      "context": "",
+      "keywords": [
+        "ácido",
+        "referência",
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "ranges": [
+          {
+            "min": "0,200",
+            "max": "0,650",
+            "unit": "g/L"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_38",
+      "term": "Ácido vanilmandélico (adulto) (urina)",
+      "definition": "Valores de referência urinários: 1 a 6 mg/24h (unidades tradicionais) / 5 a 30 mmol/24h (SI).",
+      "chapter": "Parâmetros Urinários",
+      "specialty": "nefrologia",
+      "context": "",
+      "keywords": [
+        "ácido",
+        "referência",
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "ranges": [
+          {
+            "min": "1",
+            "max": "6",
+            "unit": "mg/"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_39",
+      "term": "Cálcio (urina)",
+      "definition": "Valores de referência urinários: 0,100 a 0,250 g/24h (unidades tradicionais) / 2,5 a 6,5 mmol/24h (SI).",
+      "chapter": "Parâmetros Urinários",
+      "specialty": "nefrologia",
+      "context": "",
+      "keywords": [
+        "referência",
+        "valor",
+        "cálcio"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "ranges": [
+          {
+            "min": "0,100",
+            "max": "0,250",
+            "unit": "g/"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_40",
+      "term": "Clearance de creatinina (homem) (urina)",
+      "definition": "Valores de referência urinários: 120 ± 20 mL/min (unidades tradicionais) / 120 ± 20 mL/min (SI).",
+      "chapter": "Parâmetros Urinários",
+      "specialty": "nefrologia",
+      "context": "",
+      "keywords": [
+        "creatinina",
+        "referência",
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_41",
+      "term": "Clearance de creatinina (mulher) (urina)",
+      "definition": "Valores de referência urinários: 115 ± 16 mL/min (unidades tradicionais) / 115 ± 16 mL/min (SI).",
+      "chapter": "Parâmetros Urinários",
+      "specialty": "nefrologia",
+      "context": "",
+      "keywords": [
+        "creatinina",
+        "referência",
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_42",
+      "term": "pH (urina)",
+      "definition": "Valores de referência urinários: 4,6 a 8 (unidades tradicionais) / 4,6 a 8 (SI).",
+      "chapter": "Parâmetros Urinários",
+      "specialty": "nefrologia",
+      "context": "",
+      "keywords": [
+        "referência",
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_43",
+      "term": "Potássio (urina)",
+      "definition": "Valores de referência urinários: 40 a 100 mEq/24h (unidades tradicionais) / 40 a 100 mmol/24h (SI).",
+      "chapter": "Parâmetros Urinários",
+      "specialty": "nefrologia",
+      "context": "",
+      "keywords": [
+        "potássio",
+        "referência",
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "ranges": [
+          {
+            "min": "40",
+            "max": "100",
+            "unit": "mEq/"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_44",
+      "term": "Sódio (urina)",
+      "definition": "Valores de referência urinários: 100 a 300 mEq/24h (unidades tradicionais) / 100 a 300 mmol/24h (SI).",
+      "chapter": "Parâmetros Urinários",
+      "specialty": "nefrologia",
+      "context": "",
+      "keywords": [
+        "referência",
+        "valor",
+        "sódio"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "ranges": [
+          {
+            "min": "100",
+            "max": "300",
+            "unit": "mEq/"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_45",
+      "term": "Ureia (urina)",
+      "definition": "Valores de referência urinários: 15 a 30 g/24h (unidades tradicionais) / 250 a 500 mmol/24h (SI).",
+      "chapter": "Parâmetros Urinários",
+      "specialty": "nefrologia",
+      "context": "",
+      "keywords": [
+        "ureia",
+        "referência",
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "ranges": [
+          {
+            "min": "15",
+            "max": "30",
+            "unit": "g/"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_46",
+      "term": "Hemácias (homem)",
+      "definition": "Valores normais no hemograma: 4,5 a 6 T/L. Parâmetro do hemograma completo para avaliação hematológica.",
+      "chapter": "Hemograma - Numeração Globular",
+      "specialty": "hematologia",
+      "context": "",
+      "keywords": [
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "ranges": [
+          {
+            "min": "4,5",
+            "max": "6",
+            "unit": "T/L"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_47",
+      "term": "Hemácias (mulher)",
+      "definition": "Valores normais no hemograma: 4 a 5,4 T/L. Parâmetro do hemograma completo para avaliação hematológica.",
+      "chapter": "Hemograma - Numeração Globular",
+      "specialty": "hematologia",
+      "context": "",
+      "keywords": [
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "ranges": [
+          {
+            "min": "4",
+            "max": "5,4",
+            "unit": "T/L"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_48",
+      "term": "Hemácias (criança > 1 ano)",
+      "definition": "Valores normais no hemograma: 3,6 a 5 T/L. Parâmetro do hemograma completo para avaliação hematológica.",
+      "chapter": "Hemograma - Numeração Globular",
+      "specialty": "hematologia",
+      "context": "",
+      "keywords": [
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "ranges": [
+          {
+            "min": "3,6",
+            "max": "5",
+            "unit": "T/L"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_49",
+      "term": "Leucócitos (adulto)",
+      "definition": "Valores normais no hemograma: 4 a 10 G/L. Parâmetro do hemograma completo para avaliação hematológica.",
+      "chapter": "Hemograma - Numeração Globular",
+      "specialty": "hematologia",
+      "context": "",
+      "keywords": [
+        "leucócitos",
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "ranges": [
+          {
+            "min": "4",
+            "max": "10",
+            "unit": "G/L"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_50",
+      "term": "Leucócitos (criança)",
+      "definition": "Valores normais no hemograma: 4 a 12 G/L. Parâmetro do hemograma completo para avaliação hematológica.",
+      "chapter": "Hemograma - Numeração Globular",
+      "specialty": "hematologia",
+      "context": "",
+      "keywords": [
+        "leucócitos",
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "ranges": [
+          {
+            "min": "4",
+            "max": "12",
+            "unit": "G/L"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_51",
+      "term": "Plaquetas",
+      "definition": "Valores normais no hemograma: 150 a 500 G/L. Parâmetro do hemograma completo para avaliação hematológica.",
+      "chapter": "Hemograma - Numeração Globular",
+      "specialty": "hematologia",
+      "context": "",
+      "keywords": [
+        "valor",
+        "plaquetas"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "ranges": [
+          {
+            "min": "150",
+            "max": "500",
+            "unit": "G/L"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_52",
+      "term": "Ácido Δ-Aminolevulínico (ALA) Urinário",
+      "definition": "Significado clínico: O ALA é um precursor fundamental na síntese de heme. A enzima Δ-aminolevulinato desidratase catalisa a condensação de duas moléculas de ALA para formar o porfobilinogênio (PBG).. Valores de referência: < 10 mg/24h (7,5 μmol); < 6 mg/g de creatinina ou < 4,5 μmol/mmol de creatinina urinária; Fator de conversão: mg × 7,63 = μmol",
+      "chapter": "Biomarcadores Específicos - Ácido Δ-Aminolevulínico (ALA) Urinário",
+      "specialty": "bioquímica",
+      "context": "- Urina recolhida em HCl, ao abrigo da luz\n- Dosagem em HPLC",
+      "keywords": [
+        "creatinina",
+        "referência",
+        "ácido",
+        "valor",
+        "enzima"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "limits": [
+          {
+            "operator": "<",
+            "value": "10",
+            "unit": "mg/"
+          },
+          {
+            "operator": "<",
+            "value": "6",
+            "unit": "mg/g"
+          },
+          {
+            "operator": "<",
+            "value": "4,5",
+            "unit": "μmol/mmol"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_53",
+      "term": "Ácido Hialurônico",
+      "definition": "Significado clínico: Polissacarídeo sintetizado pelos fibroblastos do tecido conjuntivo e catabolizado principalmente pelas células endoteliais dos sinusoides hepáticos. Sua elevação no soro traduz diminuição da clearance hepática.. Valores de referência: No sangue (adultos): < 60 μg/L; No líquido pleural ou ascite: < 80 mg/L",
+      "chapter": "Biomarcadores Específicos - Ácido Hialurônico",
+      "specialty": "bioquímica",
+      "context": "- Sangue: tubo seco ou heparinizado, paciente em jejum (indispensável)\n- Evitar coleta se houver doença inflamatória articular, injeção recente de ácido hialurônico intra-articular ou cutânea\n- Líquid",
+      "keywords": [
+        "ast",
+        "referência",
+        "ácido",
+        "hepático",
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "limits": [
+          {
+            "operator": "<",
+            "value": "60",
+            "unit": "μg/L"
+          },
+          {
+            "operator": "<",
+            "value": "80",
+            "unit": "mg/L"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_54",
+      "term": "Ácido Láctico (Lactato)",
+      "definition": "Significado clínico: Forma final da degradação anaeróbica da glicose presente nos músculos e hemácias. Aumenta em hipóxias severas e quando há diminuição da gliconeogênese.",
+      "chapter": "Biomarcadores Específicos - Ácido Láctico (Lactato)",
+      "specialty": "bioquímica",
+      "context": "",
+      "keywords": [
+        "ácido",
+        "glicose"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_55",
+      "term": "Anticorpos Antifosfolipídios (aPL)",
+      "definition": "Significado clínico: Autoanticorpos dirigidos contra fosfolipídios de membranas plaquetárias ou proteínas associadas. In vitro estendem testes de coagulação, mas in vivo são trombogenes.",
+      "chapter": "Biomarcadores Específicos - Anticorpos Antifosfolipídios (aPL)",
+      "specialty": "imunologia",
+      "context": "",
+      "keywords": [
+        "proteína",
+        "anticorpo"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_56",
+      "term": "Anticorpos Antimitocôndrias (AMA2)",
+      "definition": "Significado clínico: Autoanticorpos contra constituintes da membrana mitocondrial. Caracterizam a cirrose biliar primitiva.. Valores de referência: Imunofluorescência: < 1/40; ELISA: unidades arbitrárias (depende do reagente); Imunoblot: negativo",
+      "chapter": "Biomarcadores Específicos - Anticorpos Antimitocôndrias (AMA2)",
+      "specialty": "imunologia",
+      "context": "- Pesquisa em imunofluorescência indireta sobre triplo substrato (estômago, fígado, rim) de rato ou células Hep-2\n- Confirmação por ELISA ou imunoblot",
+      "keywords": [
+        "referência",
+        "valor",
+        "anticorpo"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "limits": [
+          {
+            "operator": "<",
+            "value": "1",
+            "unit": "/"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_57",
+      "term": "Anticorpos Antimúsculo Liso (ASMA)",
+      "definition": "Significado clínico: Autoanticorpos de classe IgG contra actina. Pouco específicos, mas procurados para confirmar hepatite crônica autoimune.. Valores de referência: Imunofluorescência sobre substrato triplo: limiar 1/80; ELISA: informar junto ao laboratório",
+      "chapter": "Biomarcadores Específicos - Anticorpos Antimúsculo Liso (ASMA)",
+      "specialty": "imunologia",
+      "context": "",
+      "keywords": [
+        "autoimune",
+        "referência",
+        "valor",
+        "anticorpo"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_58",
+      "term": "Anticorpos Antinucleares (AAN)",
+      "definition": "Significado clínico: Autoanticorpos que reconhecem antígenos presentes nos núcleos celulares. Heterogêneos e pouco específicos de órgãos, mas presentes em diversas doenças autoimunes.. Valores de referência: Valor limítrofe: 1/80; Positividade moderada: 1/160; Título elevado: > 1/320; -",
+      "chapter": "Biomarcadores Específicos - Anticorpos Antinucleares (AAN)",
+      "specialty": "imunologia",
+      "context": "- Imunofluorescência indireta (IFI) sobre células Hep-2\n- Aspectos de fluorescência: periférica, homogênea, salpicada, nucleolar",
+      "keywords": [
+        "anticorpo",
+        "referência",
+        "antígeno",
+        "doença",
+        "valor",
+        "autoimune",
+        "elevado"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "limits": [
+          {
+            "operator": ">",
+            "value": "1",
+            "unit": "/"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_59",
+      "term": "Anticorpos Anti-CCP (ACPA)",
+      "definition": "Significado clínico: Reconhecem epítopos \"citrulinados\" que aparecem em proteínas da articulação sinovial sob influência da inflamação. Muito específicos da poliartrite reumatoide.. Valores de referência: Grande probabilidade de PR se > 50 U/mL; Valor limite geral: 6 U/mL (depende do reagente)",
+      "chapter": "Biomarcadores Específicos - Anticorpos Anti-CCP (ACPA)",
+      "specialty": "imunologia",
+      "context": "- Testes ELISA de segunda geração",
+      "keywords": [
+        "anticorpo",
+        "referência",
+        "proteína",
+        "valor",
+        "inflamação"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "limits": [
+          {
+            "operator": ">",
+            "value": "50",
+            "unit": "U/mL"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_60",
+      "term": "Cistinúria",
+      "definition": "Significado clínico: A cistina é um ácido aminado enxofrado presente no plasma, mas integralmente reabsorvido após sua filtração, sendo normalmente ausente da urina. A cistinúria é causada pela deficiência hereditária de reabsorção tubular da cistina.. Valores de referência: No adulto: < 23 mg/24h ou < 100 μmol/24h; Na criança < 2 anos: < 30 μmol/24h; Fatores de conversão: mg/L × 4,56 = μmol/L; μmol/L × 0,24 = mg/L",
+      "chapter": "Biomarcadores Específicos - Cistinúria",
+      "specialty": "geral",
+      "context": "- Recolher urina de 24 horas em ácido sulfossalicílico",
+      "keywords": [
+        "normal",
+        "referência",
+        "deficiência",
+        "ácido",
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "limits": [
+          {
+            "operator": "<",
+            "value": "23",
+            "unit": "mg/"
+          },
+          {
+            "operator": "<",
+            "value": "100",
+            "unit": "μmol/"
+          },
+          {
+            "operator": "<",
+            "value": "2",
+            "unit": "anos"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_61",
+      "term": "Citomegalovírus (CMV)",
+      "definition": "Significado clínico: Herpes-vírus estritamente humano que infecta cerca da metade dos adultos. A primoinfecção é habitualmente assintomática; após ela, o CMV persiste em estado latente, por vezes excretado na saliva, urina e secreções genitais.",
+      "chapter": "Biomarcadores Específicos - Citomegalovírus (CMV)",
+      "specialty": "infectologia",
+      "context": "",
+      "keywords": [
+        "infecção"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_62",
+      "term": "Cloro",
+      "definition": "Significado clínico: Principal ânion do líquido extracelular. Variações do cloro e dos bicarbonatos, assim como do cloro e do sódio, são ligadas.. Valores de referência: 100 a 105 mmol/L (100 a 105 mEq/L)",
+      "chapter": "Biomarcadores Específicos - Cloro",
+      "specialty": "nefrologia",
+      "context": "",
+      "keywords": [
+        "bicarbonato",
+        "referência",
+        "valor",
+        "sódio"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "ranges": [
+          {
+            "min": "100",
+            "max": "105",
+            "unit": "mmol/L"
+          },
+          {
+            "min": "100",
+            "max": "105",
+            "unit": "mEq/L"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_63",
+      "term": "Colesterol",
+      "definition": "Significado clínico: Provém parcialmente dos alimentos, mas principalmente da biossíntese hepática. No sangue é transportado por proteínas: 70% pelas lipoproteínas de baixa densidade (LDL).",
+      "chapter": "Biomarcadores Específicos - Colesterol",
+      "specialty": "cardiologia",
+      "context": "",
+      "keywords": [
+        "proteína",
+        "ldl",
+        "colesterol"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_64",
+      "term": "Fator de von Willebrand",
+      "definition": "Significado clínico: Glicoproteína sintetizada pelas células endoteliais e megacariócitos que contribui para aderência plaquetária ao subendotélio vascular e se liga ao fator VIII no plasma.. Valores de referência: 50 a 150%; Indivíduos do grupo sanguíneo O apresentam fator vWF mais baixo; Gravidez e estresse aumentam o fator vWF",
+      "chapter": "Biomarcadores Específicos - Fator de von Willebrand",
+      "specialty": "hematologia",
+      "context": "",
+      "keywords": [
+        "proteína",
+        "baixo",
+        "referência",
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_65",
+      "term": "Fator Reumatoide",
+      "definition": "Significado clínico: Anticorpos IgG ou IgM dirigidos contra o Fc (fator cristalizável) de uma imunoglobulina da classe IgG humana ou animal.. Valores de referência: Reação de Waaler-Rose: valor limiar = 1/64; Látex: valor limiar = 1/80; Imunonefelometria: 40 UI/mL (látex), 30 UI/mL (Waaler-Rose); ELISA: 20 UI/mL; Prevalência aumenta com idade: < 2% antes dos 30 a",
+      "chapter": "Biomarcadores Específicos - Fator Reumatoide",
+      "specialty": "hematologia",
+      "context": "",
+      "keywords": [
+        "valor",
+        "referência",
+        "imunoglobulina",
+        "anticorpo"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_66",
+      "term": "Ferritina",
+      "definition": "Significado clínico: Proteína celular de estoque do ferro. Está em grande quantidade no fígado e macrófagos. Correlação entre importância das reservas de ferro e concentração sanguínea. Também é proteína de inflamação.. Valores de referência: Mulheres em período de atividade genital: 20 a 200 μg/L; Homens e mulheres após menopausa: 30 a 300 μg/L; Crianças: concentração elevada nos primeiros meses de vida",
+      "chapter": "Biomarcadores Específicos - Ferritina",
+      "specialty": "hematologia",
+      "context": "- Exame realizado em jejum\n- Inútil interromper tratamento férrico anterior\n- Evitar hemólise",
+      "keywords": [
+        "ferritin",
+        "referência",
+        "ferritina",
+        "proteína",
+        "valor",
+        "ferro",
+        "inflamação"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal",
+      "reference_values": {
+        "ranges": [
+          {
+            "min": "20",
+            "max": "200",
+            "unit": "μg/L"
+          },
+          {
+            "min": "30",
+            "max": "300",
+            "unit": "μg/L"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caquet_67",
+      "term": "Infecção Urinária",
+      "definition": "Significado clínico: Infecção do trato urinário com presença de bactérias na urina. Diagnóstico confirmado por urocultura com isolamento e identificação de microrganismo.. Valores de referência: Limiar de bacteriúria significativa: ≥ 10⁵ UFC/mL; Limiar de leucocitúria significativa: 10⁴ elementos/mL",
+      "chapter": "Biomarcadores Específicos - Infecção Urinária",
+      "specialty": "infectologia",
+      "context": "",
+      "keywords": [
+        "diagnóstico",
+        "referência",
+        "valor",
+        "infecção"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_68",
+      "term": "Princípio: Contextualização Clínica",
+      "definition": "Todo resultado de laboratório deve ser interpretado considerando: História clínica do paciente Sintomas e sinais apresentados Medicações em uso Comorbidades Tempo de coleta",
+      "chapter": "Princípios de Interpretação Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_69",
+      "term": "Princípio: Técnica Laboratorial",
+      "definition": "Método de dosagem utilizado Sensibilidade e especificidade do teste Variações entre laboratórios Fatores pré-analíticos (coleta, armazenamento, transporte)",
+      "chapter": "Princípios de Interpretação Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_70",
+      "term": "Princípio: Dados da Literatura",
+      "definition": "Valores de referência estabelecidos Estudos clínicos relevantes Consensos e diretrizes profissionais Evidências científicas atualizadas",
+      "chapter": "Princípios de Interpretação Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [
+        "referência",
+        "valor"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_71",
+      "term": "Princípio: Variações Fisiológicas",
+      "definition": "Idade: Valores normais variam significativamente com a idade. Hemácias, leucócitos e diversos hormônios apresentam intervalos diferentes em crianças, adultos e idosos. Sexo: Diferenças entre homens e mulheres são observadas em hemoglobina, creatinina, hormônios reprodutivos e lipídios. Ciclo Menstrual: Hormônios variam dramaticamente conforme a fase (folicular, ovulatória, lútea). Hora do Dia: Ritmo circadiano afeta cortisol e ACTH (máximos pela manhã), temperatura corporal e outros parâmetros.",
+      "chapter": "Princípios de Interpretação Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [
+        "hemoglobina",
+        "hormônio",
+        "creatinina",
+        "valor",
+        "cortisol",
+        "leucócitos",
+        "hemoglobin"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_72",
+      "term": "Princípio: Fatores que Alteram Resultados",
+      "definition": "Pré-analíticos: Coleta inadequada Tubo incorreto Hemólise Contaminação Tempo de armazenamento Analíticos: Calibração do equipamento Controle de qualidade Reagentes vencidos Pós-analíticos: Transcrição incorreta Interpretação inadequada Comunicação deficiente ---",
+      "chapter": "Princípios de Interpretação Laboratorial",
+      "specialty": "hematologia",
+      "context": "",
+      "keywords": [
+        "interpretação",
+        "alt"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_73",
+      "term": "ACTH",
+      "definition": "Abreviação laboratorial: ACTH = Hormônio adrenocorticotrófico. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [
+        "hormônio"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_74",
+      "term": "ALAT",
+      "definition": "Abreviação laboratorial: ALAT = Alanina aminotransferase. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_75",
+      "term": "ASAT",
+      "definition": "Abreviação laboratorial: ASAT = Aspartato aminotransferase. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_76",
+      "term": "AAN",
+      "definition": "Abreviação laboratorial: AAN = Anticorpos antinucleares. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [
+        "anticorpo"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_77",
+      "term": "AMA2",
+      "definition": "Abreviação laboratorial: AMA2 = Anticorpos antimitocôndrias tipo 2. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [
+        "anticorpo"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_78",
+      "term": "ASMA",
+      "definition": "Abreviação laboratorial: ASMA = Anticorpos antimúsculo liso. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [
+        "anticorpo"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_79",
+      "term": "ACE",
+      "definition": "Abreviação laboratorial: ACE = Antígeno carcinoembrionário. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [
+        "antígeno"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_80",
+      "term": "AFP",
+      "definition": "Abreviação laboratorial: AFP = Alfa-fetoproteína. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [
+        "proteína",
+        "afp"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_81",
+      "term": "BNP",
+      "definition": "Abreviação laboratorial: BNP = Fator natriurético de tipo B. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_82",
+      "term": "CBP",
+      "definition": "Abreviação laboratorial: CBP = Cirrose biliar primitiva. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_83",
+      "term": "CK/CPK",
+      "definition": "Abreviação laboratorial: CK/CPK = Creatinoquinase/Creatinofosfoquinase. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_84",
+      "term": "CRP",
+      "definition": "Abreviação laboratorial: CRP = Proteína C-reativa. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [
+        "proteína"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_85",
+      "term": "DFG",
+      "definition": "Abreviação laboratorial: DFG = Taxa de filtração glomerular. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_86",
+      "term": "ECBU",
+      "definition": "Abreviação laboratorial: ECBU = Exame citobacteriológico de urina. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_87",
+      "term": "ELISA",
+      "definition": "Abreviação laboratorial: ELISA = Enzyme-Linked Immunosorbent Assay. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_88",
+      "term": "FSH",
+      "definition": "Abreviação laboratorial: FSH = Hormônio folículo-estimulante. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [
+        "hormônio"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_89",
+      "term": "FT3",
+      "definition": "Abreviação laboratorial: FT3 = Tri-iodotironina livre. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [
+        "t3"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_90",
+      "term": "FT4",
+      "definition": "Abreviação laboratorial: FT4 = Tiroxina livre. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [
+        "t4"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_91",
+      "term": "GH",
+      "definition": "Abreviação laboratorial: GH = Hormônio do crescimento. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [
+        "hormônio"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_92",
+      "term": "HDL",
+      "definition": "Abreviação laboratorial: HDL = Lipoproteína de alta densidade. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [
+        "proteína",
+        "hdl",
+        "alt"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_93",
+      "term": "HLA",
+      "definition": "Abreviação laboratorial: HLA = Antígeno linfocitário humano. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [
+        "antígeno"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_94",
+      "term": "HPLC",
+      "definition": "Abreviação laboratorial: HPLC = Cromatografia líquida de alta eficiência. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [
+        "alt"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_95",
+      "term": "IFI",
+      "definition": "Abreviação laboratorial: IFI = Imunofluorescência indireta. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_96",
+      "term": "INR",
+      "definition": "Abreviação laboratorial: INR = International Normalized Ratio. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [
+        "normal"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_97",
+      "term": "LDH",
+      "definition": "Abreviação laboratorial: LDH = Desidrogenase láctica. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_98",
+      "term": "LDL",
+      "definition": "Abreviação laboratorial: LDL = Lipoproteína de baixa densidade. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [
+        "proteína",
+        "ldl"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_99",
+      "term": "LH",
+      "definition": "Abreviação laboratorial: LH = Hormônio luteinizante. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [
+        "hormônio"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_100",
+      "term": "LED",
+      "definition": "Abreviação laboratorial: LED = Lúpus eritematoso disseminado. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_101",
+      "term": "PAL",
+      "definition": "Abreviação laboratorial: PAL = Fosfatases alcalinas. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [
+        "fosfatase"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_102",
+      "term": "PR",
+      "definition": "Abreviação laboratorial: PR = Poliartrite reumatoide. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_103",
+      "term": "PSA",
+      "definition": "Abreviação laboratorial: PSA = Antígeno prostático específico. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [
+        "antígeno",
+        "psa"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_104",
+      "term": "PTH",
+      "definition": "Abreviação laboratorial: PTH = Paratormônio. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_105",
+      "term": "SAPL",
+      "definition": "Abreviação laboratorial: SAPL = Síndrome dos anticorpos antifosfolipídios. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [
+        "síndrome",
+        "anticorpo"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_106",
+      "term": "T3",
+      "definition": "Abreviação laboratorial: T3 = Tri-iodotironina. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [
+        "t3"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_107",
+      "term": "T4",
+      "definition": "Abreviação laboratorial: T4 = Tetraiodotironina/Tiroxina. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [
+        "t4"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_108",
+      "term": "TCA",
+      "definition": "Abreviação laboratorial: TCA = Tempo de tromboplastina parcialmente ativada. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [
+        "ast"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_109",
+      "term": "TP",
+      "definition": "Abreviação laboratorial: TP = Taxa de protrombina. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_110",
+      "term": "TSH",
+      "definition": "Abreviação laboratorial: TSH = Hormônio tireoestimulante. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "endocrinologia",
+      "context": "",
+      "keywords": [
+        "hormônio",
+        "tsh"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_111",
+      "term": "VDRL",
+      "definition": "Abreviação laboratorial: VDRL = Venereal Disease Research Laboratory. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_112",
+      "term": "VS",
+      "definition": "Abreviação laboratorial: VS = Velocidade de sedimentação globular. Termo utilizado em exames e laudos médicos.",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    },
+    {
+      "id": "caquet_113",
+      "term": "Abreviações Laboratoriais Essenciais",
+      "definition": "Principais abreviações em laudos: ALT/ALAT (alanina aminotransferase), AST/ASAT (aspartato aminotransferase), BNP (fator natriurético tipo B), CK/CPK (creatinoquinase), CRP/PCR (proteína C-reativa), DFG (taxa de filtração glomerular), FSH (hormônio folículo-estimulante), GH (hormônio do crescimento), HDL/LDL (lipoproteínas), INR (razão normalizada internacional), LDH (desidrogenase láctica), PSA (antígeno prostático específico), TSH (hormônio tireoestimulante), VS/VHS (velocidade de sedimentação globular).",
+      "chapter": "Abreviações e Terminologia Laboratorial",
+      "specialty": "geral",
+      "context": "",
+      "keywords": [
+        "vhs",
+        "hormônio",
+        "ast",
+        "normal",
+        "ldl",
+        "tsh",
+        "antígeno",
+        "proteína",
+        "pcr",
+        "hdl"
+      ],
+      "source": "Caquet - 250 Exames de Laboratório (12ª ed.)",
+      "language": "pt-BR",
+      "alert_level": "normal"
+    }
+  ]
+}
