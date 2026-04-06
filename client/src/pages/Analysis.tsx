@@ -285,13 +285,19 @@ export default function Analysis() {
       // ── Resumo Clínico (se existir) ────────────────────────────────────────
       const currentSummary = summaryText;
       if (currentSummary) {
-        const finalY = (doc as any).lastAutoTable?.finalY ?? y;
-        let summaryY = finalY + 10;
+        const tableEndY = (doc as any).lastAutoTable?.finalY ?? y;
         const pageH = doc.internal.pageSize.getHeight();
-        if (summaryY > pageH - 40) {
+        const lineHeight = 4.5; // ~8pt font
+        const summaryLines = doc.splitTextToSize(currentSummary, pageW - margin * 2);
+        const summaryBlockH = summaryLines.length * lineHeight + 16; // header + lines
+
+        // Se o bloco inteiro não cabe na página atual, abrir nova página
+        let summaryY = tableEndY + 10;
+        if (summaryY + summaryBlockH > pageH - 14) {
           doc.addPage();
           summaryY = 20;
         }
+
         doc.setTextColor(30, 64, 103);
         doc.setFontSize(10);
         doc.setFont("helvetica", "bold");
@@ -303,28 +309,19 @@ export default function Analysis() {
         doc.setFont("helvetica", "normal");
         doc.setFontSize(8);
         doc.setTextColor(40, 40, 40);
-        const summaryLines = doc.splitTextToSize(currentSummary, pageW - margin * 2);
-        doc.text(summaryLines, margin, summaryY);
-      }
 
-      // ── Observações ────────────────────────────────────────────────────────
-      if (session.observations) {
-        const finalY2 = (doc as any).lastAutoTable?.finalY ?? y;
-        const obsY = finalY2 + 8;
-        if (obsY < doc.internal.pageSize.getHeight() - 20) {
-          doc.setTextColor(30, 64, 103);
-          doc.setFontSize(9);
-          doc.setFont("helvetica", "bold");
-          doc.text("Observações", margin, obsY);
-          doc.setFont("helvetica", "normal");
-          doc.setFontSize(7.5);
-          doc.setTextColor(60, 60, 60);
-          const lines = doc.splitTextToSize(session.observations, pageW - margin * 2);
-          doc.text(lines, margin, obsY + 5);
+        // Renderizar linha a linha com quebra automática de página
+        for (const line of summaryLines) {
+          if (summaryY > pageH - 14) {
+            doc.addPage();
+            summaryY = 20;
+          }
+          doc.text(line, margin, summaryY);
+          summaryY += lineHeight;
         }
       }
 
-      // ── Rodapé ─────────────────────────────────────────────────────────────
+      // ── Rodapé─────────────
       const pageCount = (doc.internal as any).getNumberOfPages();
       for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
