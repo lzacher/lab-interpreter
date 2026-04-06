@@ -35,6 +35,15 @@ import {
   BookOpen,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 
 // Classifica o status do exame para destaque visual
 function classifyStatus(status: string): "alterado" | "elevado" | "baixo" | "normal" {
@@ -70,6 +79,12 @@ export default function Analysis() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [obsExpanded, setObsExpanded] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [pdfSections, setPdfSections] = useState({
+    patientInfo: true,
+    results: true,
+    summary: true,
+  });
 
   // Resumo clínico
   const [summaryText, setSummaryText] = useState("");
@@ -167,8 +182,9 @@ export default function Analysis() {
     return all.filter((e) => e.name.toLowerCase().includes(q));
   }, [session, search]);
 
-  const exportPdf = useCallback(async () => {
+  const exportPdf = useCallback(async (sections: typeof pdfSections = pdfSections) => {
     if (!session) return;
+    setShowExportModal(false);
     setExportingPdf(true);
     try {
       const { jsPDF } = await import("jspdf");
@@ -197,6 +213,7 @@ export default function Analysis() {
       let y = 30;
 
       // ── Dados do paciente ──────────────────────────────────────────────────
+      if (sections.patientInfo) {
       doc.setTextColor(30, 64, 103);
       doc.setFontSize(10);
       doc.setFont("helvetica", "bold");
@@ -233,8 +250,10 @@ export default function Analysis() {
       });
       if (patientFields.length % 2 !== 0) y += 6;
       y += 8;
+      } // end patientInfo
 
       // ── Tabela de resultados ───────────────────────────────────────────────
+      if (sections.results) {
       doc.setTextColor(30, 64, 103);
       doc.setFontSize(10);
       doc.setFont("helvetica", "bold");
@@ -281,8 +300,10 @@ export default function Analysis() {
           }
         },
       });
+      } // end results
 
       // ── Resumo Clínico (se existir) ────────────────────────────────────────
+      if (sections.summary) {
       const currentSummary = summaryText;
       if (currentSummary) {
         const tableEndY = (doc as any).lastAutoTable?.finalY ?? y;
@@ -321,6 +342,7 @@ export default function Analysis() {
           summaryY += lineHeight;
         }
       }
+      } // end summary
 
       // ── Rodapé─────────────
       const pageCount = (doc.internal as any).getNumberOfPages();
@@ -391,7 +413,7 @@ export default function Analysis() {
             <Button
               size="sm"
               variant="outline"
-              onClick={exportPdf}
+              onClick={() => setShowExportModal(true)}
               disabled={exportingPdf}
               className="flex items-center gap-1.5"
             >
@@ -735,6 +757,87 @@ export default function Analysis() {
           </div>
         )}
       </main>
+
+      {/* Modal de seleção de seções para exportar PDF */}
+      <Dialog open={showExportModal} onOpenChange={setShowExportModal}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Download className="h-4 w-4 text-primary" />
+              Exportar PDF
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="py-2 space-y-1">
+            <p className="text-sm text-muted-foreground mb-4">
+              Selecione as seções que deseja incluir no laudo:
+            </p>
+
+            {[
+              { key: "patientInfo" as const, label: "Dados do Paciente", desc: "Nome, data de nascimento, laboratório, etc." },
+              { key: "results" as const, label: "Resultados dos Exames", desc: "Tabela completa com valores e referências" },
+              { key: "summary" as const, label: "Resumo Clínico", desc: "Interpretação gerada pela IA", disabled: !summaryText },
+            ].map(({ key, label, desc, disabled }) => (
+              <div
+                key={key}
+                className={`flex items-start gap-3 p-3 rounded-lg border transition-colors cursor-pointer ${
+                  disabled
+                    ? "opacity-40 cursor-not-allowed border-border"
+                    : pdfSections[key]
+                    ? "border-primary/40 bg-primary/5"
+                    : "border-border hover:border-primary/30 hover:bg-muted/40"
+                }`}
+                onClick={() => {
+                  if (!disabled) {
+                    setPdfSections((prev) => ({ ...prev, [key]: !prev[key] }));
+                  }
+                }}
+              >
+                <Checkbox
+                  id={`section-${key}`}
+                  checked={pdfSections[key]}
+                  disabled={disabled}
+                  onCheckedChange={(checked) => {
+                    if (!disabled) {
+                      setPdfSections((prev) => ({ ...prev, [key]: !!checked }));
+                    }
+                  }}
+                  className="mt-0.5"
+                />
+                <div className="flex-1 min-w-0">
+                  <Label
+                    htmlFor={`section-${key}`}
+                    className={`text-sm font-medium leading-none cursor-pointer ${
+                      disabled ? "cursor-not-allowed" : ""
+                    }`}
+                  >
+                    {label}
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-1">{desc}</p>
+                  {key === "summary" && disabled && (
+                    <p className="text-xs text-amber-600 mt-1">Gere o resumo clínico primeiro</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" size="sm" onClick={() => setShowExportModal(false)}>
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => exportPdf(pdfSections)}
+              disabled={!pdfSections.patientInfo && !pdfSections.results && !pdfSections.summary}
+              className="gap-1.5"
+            >
+              <Download className="h-4 w-4" />
+              Gerar PDF
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

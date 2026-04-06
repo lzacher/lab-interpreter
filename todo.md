@@ -227,3 +227,4 @@
 - [x] Frontend: estado de feedback persiste (botão ativo após votar)
 - [x] Frontend: feedback enviado via trpc.lab.submitRagFeedback
 - [x] RAG refatorado para busca por palavras-chave (funciona em produção)
+- [x] Modal de seleção de seções antes de exportar PDF
