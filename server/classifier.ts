@@ -350,19 +350,10 @@ async function analyzePdf(filePath: string): Promise<AnalyzeResult> {
       let score: number;
       let details: PageAnalysis["details"];
 
-      if (hasNativeText) {
-        // Native-text PDF: classify by text scoring (fast, no LLM needed)
-        const scored = scoreText(nativeText);
-        classification = scored.score >= 30 ? "laudo" : "imagem";
-        score = scored.score;
-        details = { wordCount: scored.wordCount, keywordsFound: scored.keywordsFound, hasNativeText: true, isScanned: false };
-      } else {
-        // Scanned PDF: classify by LLM vision
-        const llmResult = await classifyImageWithLLM(thumbnailBase64);
-        classification = llmResult.classification;
-        score = llmResult.score;
-        details = { hasNativeText: false, isScanned: true };
-      }
+      // Classification is now done by the user — default to indefinido
+      classification = "indefinido";
+      score = 0;
+      details = { hasNativeText, isScanned: !hasNativeText };
 
       pages.push({ pageNumber: pageNum, classification, score, thumbnailBase64, details });
     } else {
@@ -385,15 +376,14 @@ async function analyzePdf(filePath: string): Promise<AnalyzeResult> {
 async function analyzeImage(filePath: string): Promise<AnalyzeResult> {
   const imageBuffer = fs.readFileSync(filePath);
   const thumbnailBase64 = await toThumbnailBase64(imageBuffer, 800);
-  const { classification, score } = await classifyImageWithLLM(thumbnailBase64);
-
+  // Classification is now done by the user — default to indefinido
   return {
     totalPages: 1,
     pages: [
       {
         pageNumber: 1,
-        classification,
-        score,
+        classification: "indefinido",
+        score: 0,
         thumbnailBase64,
         details: { isScanned: false },
       },
