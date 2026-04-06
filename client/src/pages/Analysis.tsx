@@ -778,20 +778,16 @@ export default function Analysis() {
               { key: "results" as const, label: "Resultados dos Exames", desc: "Tabela completa com valores e referências" },
               { key: "summary" as const, label: "Resumo Clínico", desc: "Interpretação gerada pela IA", disabled: !summaryText },
             ].map(({ key, label, desc, disabled }) => (
-              <div
+              <label
                 key={key}
-                className={`flex items-start gap-3 p-3 rounded-lg border transition-colors cursor-pointer ${
+                htmlFor={`section-${key}`}
+                className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${
                   disabled
                     ? "opacity-40 cursor-not-allowed border-border"
-                    : pdfSections[key]
+                    : "cursor-pointer " + (pdfSections[key]
                     ? "border-primary/40 bg-primary/5"
-                    : "border-border hover:border-primary/30 hover:bg-muted/40"
+                    : "border-border hover:border-primary/30 hover:bg-muted/40")
                 }`}
-                onClick={() => {
-                  if (!disabled) {
-                    setPdfSections((prev) => ({ ...prev, [key]: !prev[key] }));
-                  }
-                }}
               >
                 <Checkbox
                   id={`section-${key}`}
@@ -818,7 +814,7 @@ export default function Analysis() {
                     <p className="text-xs text-amber-600 mt-1">Gere o resumo clínico primeiro</p>
                   )}
                 </div>
-              </div>
+              </label>
             ))}
           </div>
 
