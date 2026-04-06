@@ -33,6 +33,7 @@ import {
   ThumbsUp,
   ThumbsDown,
   BookOpen,
+  ImageIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -44,6 +45,7 @@ import {
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Classifica o status do exame para destaque visual
 function classifyStatus(status: string): "alterado" | "elevado" | "baixo" | "normal" {
@@ -74,7 +76,17 @@ function StatusBadge({ status }: { status: string }) {
 export default function Analysis() {
   const params = useParams<{ sessionId: string }>();
   const sessionId = parseInt(params.sessionId ?? "0", 10);
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
+
+  // Ler imagingId da query string (?imagingId=X)
+  const imagingId = useMemo(() => {
+    const qs = typeof window !== "undefined" ? window.location.search : "";
+    const p = new URLSearchParams(qs);
+    const v = parseInt(p.get("imagingId") ?? "0", 10);
+    return v > 0 ? v : null;
+  }, [location]);
+
+  const [activeTab, setActiveTab] = useState<"lab" | "imaging">("lab");
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [obsExpanded, setObsExpanded] = useState(false);
@@ -93,11 +105,17 @@ export default function Analysis() {
   // RAG chunks retornados pelo generateClinicalSummary
   const [ragChunks, setRagChunks] = useState<Array<{ id: number; source: string; chunkText: string }>>([]);
   // Votos locais: chunkId → "up" | "down"
-  const [localVotes, setLocalVotes] = useState<Record<number, "up" | "down">>({}); 
+  const [localVotes, setLocalVotes] = useState<Record<number, "up" | "down">>({});
 
   const { data: session, isLoading } = trpc.lab.getSession.useQuery(
     { sessionId },
     { enabled: !!sessionId }
+  );
+
+  // Buscar dados do exame de imagem (quando imagingId estiver presente)
+  const { data: imagingReport, isLoading: imagingLoading } = trpc.imaging.getReport.useQuery(
+    { reportId: imagingId ?? 0 },
+    { enabled: !!imagingId }
   );
 
   // Carregar resumo salvo quando a sessão carregar
@@ -110,54 +128,30 @@ export default function Analysis() {
   const generateSummary = trpc.lab.generateClinicalSummary.useMutation({
     onSuccess: (data) => {
       setSummaryText(data.summary);
-      if (data.ragChunks && data.ragChunks.length > 0) {
-        setRagChunks(data.ragChunks);
-        setLocalVotes({});
-      }
-      toast.success("Resumo clínico gerado com sucesso.");
+      if (data.ragChunks) setRagChunks(data.ragChunks);
+      toast.success("Resumo clínico gerado com sucesso!");
     },
-    onError: () => {
-      toast.error("Erro ao gerar resumo clínico. Tente novamente.");
-    },
+    onError: () => toast.error("Erro ao gerar resumo clínico."),
   });
-
-  // Carregar votos existentes para esta sessão
-  const { data: feedbackData } = trpc.lab.getRagFeedback.useQuery(
-    { sessionId },
-    { enabled: !!sessionId && ragChunks.length > 0 }
-  );
-  useEffect(() => {
-    if (feedbackData?.votes) {
-      setLocalVotes(feedbackData.votes as Record<number, "up" | "down">);
-    }
-  }, [feedbackData]);
-
-  const submitFeedback = trpc.lab.submitRagFeedback.useMutation({
-    onSuccess: () => {},
-    onError: () => { toast.error("Erro ao registrar feedback."); },
-  });
-
-  const handleVote = (chunkId: number, vote: "up" | "down") => {
-    // Toggle: se já votou igual, remove; senão, aplica novo voto
-    const current = localVotes[chunkId];
-    if (current === vote) {
-      // Remove vote locally (no undo endpoint needed — just UI)
-      setLocalVotes((prev) => { const n = { ...prev }; delete n[chunkId]; return n; });
-    } else {
-      setLocalVotes((prev) => ({ ...prev, [chunkId]: vote }));
-      submitFeedback.mutate({ chunkId, sessionId, vote });
-    }
-  };
 
   const saveSummary = trpc.lab.saveClinicalSummary.useMutation({
-    onSuccess: () => {
-      toast.success("Resumo clínico salvo.");
-      setIsEditingSummary(false);
-    },
-    onError: () => {
-      toast.error("Erro ao salvar resumo. Tente novamente.");
-    },
+    onSuccess: () => toast.success("Resumo salvo."),
+    onError: () => toast.error("Erro ao salvar resumo."),
   });
+
+  const submitFeedback = trpc.lab.submitRagFeedback.useMutation();
+
+  const handleVote = (chunkId: number, vote: "up" | "down") => {
+    setLocalVotes((prev) => {
+      const current = prev[chunkId];
+      const next = current === vote ? undefined : vote;
+      const updated = { ...prev };
+      if (next) updated[chunkId] = next;
+      else delete updated[chunkId];
+      return updated;
+    });
+    submitFeedback.mutate({ chunkId, vote, sessionId });
+  };
 
   const handleStartEdit = () => {
     setEditBuffer(summaryText);
@@ -214,125 +208,108 @@ export default function Analysis() {
 
       // ── Dados do paciente ──────────────────────────────────────────────────
       if (sections.patientInfo) {
-      doc.setTextColor(30, 64, 103);
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "bold");
-      doc.text("Dados do Paciente", margin, y);
-      y += 5;
-      doc.setDrawColor(30, 64, 103);
-      doc.setLineWidth(0.3);
-      doc.line(margin, y, pageW - margin, y);
-      y += 4;
-
-      const patientFields = [
-        ["Nome", session.patientName],
-        ["Data de Nascimento", session.patientDob],
-        ["Sexo", session.patientSex],
-        ["Data da Coleta", session.collectionDate],
-        ["Data de Emissão", session.emissionDate],
-        ["Laboratório", session.laboratory],
-        ["Médico Solicitante", session.requestingDoctor],
-        ["Médico Responsável", session.responsibleDoctor],
-        ["Nº Atendimento", session.attendanceNumber],
-      ].filter(([, v]) => v) as [string, string][];
-
-      doc.setFontSize(8.5);
-      const colW = (pageW - margin * 2) / 2;
-      patientFields.forEach(([label, value], i) => {
-        const col = i % 2 === 0 ? margin : margin + colW;
-        if (i % 2 === 0 && i > 0) y += 6;
+        doc.setTextColor(30, 64, 103);
+        doc.setFontSize(10);
         doc.setFont("helvetica", "bold");
-        doc.setTextColor(80, 80, 80);
-        doc.text(`${label}:`, col, y);
-        doc.setFont("helvetica", "normal");
-        doc.setTextColor(30, 30, 30);
-        doc.text(value, col + 30, y);
-      });
-      if (patientFields.length % 2 !== 0) y += 6;
-      y += 8;
-      } // end patientInfo
+        doc.text("Dados do Paciente", margin, y);
+        y += 5;
+        doc.setDrawColor(30, 64, 103);
+        doc.setLineWidth(0.3);
+        doc.line(margin, y, pageW - margin, y);
+        y += 4;
 
-      // ── Tabela de resultados ───────────────────────────────────────────────
+        const patientFields = [
+          ["Nome", session.patientName],
+          ["Data de Nascimento", session.patientDob],
+          ["Sexo", session.patientSex],
+          ["Data da Coleta", session.collectionDate],
+          ["Data de Emissão", session.emissionDate],
+          ["Laboratório", session.laboratory],
+          ["Médico Solicitante", session.requestingDoctor],
+          ["Médico Responsável", session.responsibleDoctor],
+          ["Atendimento Nº", session.attendanceNumber],
+          ["Material", session.material],
+        ].filter(([, v]) => v) as [string, string][];
+
+        autoTable(doc, {
+          startY: y,
+          head: [],
+          body: patientFields,
+          theme: "plain",
+          styles: { fontSize: 8, cellPadding: 1.5, textColor: [40, 40, 40] },
+          columnStyles: { 0: { fontStyle: "bold", cellWidth: 50 } },
+          margin: { left: margin, right: margin },
+        });
+        y = (doc as any).lastAutoTable.finalY + 6;
+      }
+
+      // ── Resultados ─────────────────────────────────────────────────────────
       if (sections.results) {
-      doc.setTextColor(30, 64, 103);
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "bold");
-      doc.text("Resultados dos Exames", margin, y);
-      y += 5;
-      doc.setDrawColor(30, 64, 103);
-      doc.line(margin, y, pageW - margin, y);
-      y += 2;
+        doc.setTextColor(30, 64, 103);
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        doc.text("Resultados dos Exames", margin, y);
+        y += 5;
+        doc.setDrawColor(30, 64, 103);
+        doc.setLineWidth(0.3);
+        doc.line(margin, y, pageW - margin, y);
+        y += 2;
 
-      const allExams = session.exams as any[];
-      autoTable(doc, {
-        startY: y,
-        margin: { left: margin, right: margin },
-        head: [["Exame", "Resultado", "Unidade", "Valor de Referência"]],
-        body: allExams.map((e) => [
-          e.name ?? "",
-          e.result ?? "",
-          e.unit ?? "",
-          e.referenceRange ?? "",
-        ]),
-        styles: { fontSize: 7.5, cellPadding: 2.5, overflow: "linebreak", valign: "top" },
-        headStyles: { fillColor: [30, 64, 103], textColor: 255, fontStyle: "bold", fontSize: 8 },
-        alternateRowStyles: { fillColor: [245, 248, 252] },
-        columnStyles: {
-          0: { cellWidth: 45 },
-          1: { cellWidth: 20, halign: "right" },
-          2: { cellWidth: 18 },
-          3: { cellWidth: "auto" },
-        },
-        didParseCell: (data: any) => {
-          if (data.section === "body") {
-            const exam = allExams[data.row.index];
-            const sc = classifyStatus(exam?.status ?? "");
-            if (sc === "elevado") {
-              data.cell.styles.fillColor = [255, 251, 235];
-              data.cell.styles.textColor = [120, 80, 0];
-            } else if (sc === "baixo") {
-              data.cell.styles.fillColor = [239, 246, 255];
-              data.cell.styles.textColor = [30, 64, 175];
-            } else if (sc === "alterado") {
-              data.cell.styles.fillColor = [255, 241, 242];
-              data.cell.styles.textColor = [185, 28, 28];
+        autoTable(doc, {
+          startY: y,
+          head: [["Exame", "Resultado", "Unidade", "Valor de Referência", "Status"]],
+          body: (session.exams as any[]).map((e) => [
+            e.name ?? "",
+            e.result ?? "",
+            e.unit ?? "",
+            e.referenceRange ?? "",
+            e.status ?? "",
+          ]),
+          theme: "striped",
+          headStyles: { fillColor: [30, 64, 103], fontSize: 8, fontStyle: "bold" },
+          styles: { fontSize: 7.5, cellPadding: 2 },
+          columnStyles: { 0: { cellWidth: 55 }, 1: { cellWidth: 22 }, 2: { cellWidth: 18 }, 3: { cellWidth: 60 }, 4: { cellWidth: 22 } },
+          margin: { left: margin, right: margin },
+          didParseCell: (data) => {
+            if (data.column.index === 4 && data.section === "body") {
+              const status = (data.cell.raw as string ?? "").toLowerCase();
+              if (status === "elevado" || status === "alto") data.cell.styles.textColor = [180, 90, 0];
+              else if (status === "baixo" || status === "reduzido") data.cell.styles.textColor = [30, 80, 180];
+              else if (status === "alterado" || status === "anormal") data.cell.styles.textColor = [180, 30, 30];
             }
-          }
-        },
-      });
-      } // end results
+          },
+        });
+        y = (doc as any).lastAutoTable.finalY + 6;
+      }
 
-      // ── Resumo Clínico (se existir) ────────────────────────────────────────
-      if (sections.summary) {
-      const currentSummary = summaryText;
-      if (currentSummary) {
-        const tableEndY = (doc as any).lastAutoTable?.finalY ?? y;
+      // ── Resumo Clínico ─────────────────────────────────────────────────────
+      if (sections.summary && summaryText) {
         const pageH = doc.internal.pageSize.getHeight();
-        const lineHeight = 4.5; // ~8pt font
-        const textWidth = pageW - margin * 2 - 4; // 4mm safety margin on right
-        const summaryLines = doc.splitTextToSize(currentSummary, textWidth);
-        const summaryBlockH = summaryLines.length * lineHeight + 16; // header + lines
+        const lineHeight = 5;
+        const textWidth = pageW - margin * 2 - 4;
+        const summaryLines = doc.splitTextToSize(summaryText, textWidth);
+        const blockHeight = summaryLines.length * lineHeight + 20;
 
-        // Se o bloco inteiro não cabe na página atual, abrir nova página
-        let summaryY = tableEndY + 10;
-        if (summaryY + summaryBlockH > pageH - 14) {
+        if (y + blockHeight > pageH - 14) {
           doc.addPage();
-          summaryY = 20;
+          y = 20;
         }
 
         doc.setTextColor(30, 64, 103);
         doc.setFontSize(10);
         doc.setFont("helvetica", "bold");
-        doc.text("Resumo Clínico", margin, summaryY);
-        summaryY += 5;
+        doc.text("Resumo Clínico", margin, y);
+        y += 5;
         doc.setDrawColor(30, 64, 103);
-        doc.line(margin, summaryY, pageW - margin, summaryY);
-        summaryY += 5;
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(8);
-        doc.setTextColor(40, 40, 40);
+        doc.setLineWidth(0.3);
+        doc.line(margin, y, pageW - margin, y);
+        y += 5;
 
-        // Renderizar linha a linha com quebra automática de página
+        doc.setTextColor(40, 40, 40);
+        doc.setFontSize(8.5);
+        doc.setFont("helvetica", "normal");
+
+        let summaryY = y;
         for (const line of summaryLines) {
           if (summaryY > pageH - 14) {
             doc.addPage();
@@ -342,7 +319,6 @@ export default function Analysis() {
           summaryY += lineHeight;
         }
       }
-      } // end summary
 
       // ── Rodapé─────────────
       const pageCount = (doc.internal as any).getNumberOfPages();
@@ -382,6 +358,416 @@ export default function Analysis() {
       </div>
     );
   }
+
+  // ── Conteúdo de exames laboratoriais (reutilizado em ambos os modos) ──────
+  const labContent = (
+    <div className="space-y-6">
+      {/* Patient Info */}
+      <div className="bg-card border border-border rounded-xl p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <User className="h-4 w-4 text-primary" />
+          <h2 className="font-semibold text-sm text-foreground">Informações do Paciente</h2>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-3">
+          {[
+            { label: "Nome", value: session.patientName },
+            { label: "Data de Nascimento", value: session.patientDob },
+            { label: "Sexo", value: session.patientSex },
+            { label: "Data da Coleta", value: session.collectionDate },
+            { label: "Data de Emissão", value: session.emissionDate },
+            { label: "Laboratório", value: session.laboratory },
+            { label: "Médico Solicitante", value: session.requestingDoctor },
+            { label: "Médico Responsável", value: session.responsibleDoctor },
+            { label: "Atendimento Nº", value: session.attendanceNumber },
+            { label: "Material", value: session.material },
+          ]
+            .filter((f) => f.value)
+            .map(({ label, value }) => (
+              <div key={label}>
+                <p className="text-xs text-muted-foreground">{label}</p>
+                <p className="text-sm font-medium text-foreground mt-0.5">{value}</p>
+              </div>
+            ))}
+        </div>
+      </div>
+
+      {/* Summary bar */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <h3 className="font-semibold text-foreground">
+            Resultados dos Exames
+            <span className="ml-2 text-sm font-normal text-muted-foreground">
+              ({session.exams.length} exame{session.exams.length !== 1 ? "s" : ""})
+            </span>
+          </h3>
+          {/* Legenda */}
+          <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+            <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full font-medium"><TrendingUp className="h-2.5 w-2.5" /> Elevado</span>
+            <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded-full font-medium"><TrendingDown className="h-2.5 w-2.5" /> Baixo</span>
+            <span className="inline-flex items-center gap-1 bg-red-50 text-red-700 border border-red-200 px-1.5 py-0.5 rounded-full font-medium"><AlertTriangle className="h-2.5 w-2.5" /> Alterado</span>
+          </div>
+        </div>
+        <div className="relative w-64">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar exame..."
+            className="pl-9 h-9 text-sm"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {/* Exams Table */}
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/40 hover:bg-muted/40">
+              <TableHead className="w-[30%] font-semibold text-foreground">Exame</TableHead>
+              <TableHead className="w-[12%] font-semibold text-foreground text-right">Resultado</TableHead>
+              <TableHead className="w-[8%] font-semibold text-foreground">Unidade</TableHead>
+              <TableHead className="w-[35%] font-semibold text-foreground">Valor de Referência</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filtered.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center py-10 text-muted-foreground text-sm">
+                  Nenhum exame encontrado.
+                </TableCell>
+              </TableRow>
+            ) : (
+              filtered.map((exam: any) => {
+                const isExpanded = expandedId === exam.id;
+                const hasLongRef = (exam.referenceRange ?? "").length > 60;
+                const needsExpand = hasLongRef;
+                const statusCls = classifyStatus(exam.status ?? "");
+                const rowBg =
+                  statusCls === "elevado" ? "bg-amber-50/60 hover:bg-amber-50" :
+                  statusCls === "baixo"   ? "bg-blue-50/60 hover:bg-blue-50" :
+                  statusCls === "alterado"? "bg-red-50/60 hover:bg-red-50" :
+                  needsExpand ? "cursor-pointer hover:bg-muted/30" : "";
+
+                return (
+                  <TableRow
+                    key={exam.id}
+                    className={`align-top transition-colors ${rowBg} ${needsExpand ? "cursor-pointer" : ""}`}
+                    onClick={needsExpand ? () => setExpandedId(isExpanded ? null : exam.id) : undefined}
+                  >
+                    <TableCell className="font-medium text-sm text-foreground py-3">
+                      <div className="flex items-start gap-2">
+                        {needsExpand && (
+                          <span className="mt-0.5 text-muted-foreground flex-shrink-0">
+                            {isExpanded
+                              ? <ChevronUp className="h-3.5 w-3.5" />
+                              : <ChevronDown className="h-3.5 w-3.5" />}
+                          </span>
+                        )}
+                        <span>{exam.name}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right py-3">
+                      <div className="flex flex-col items-end gap-1">
+                        <span className="font-mono font-semibold text-sm text-foreground">{exam.result ?? "—"}</span>
+                        <StatusBadge status={exam.status ?? ""} />
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground py-3">
+                      {exam.unit || "—"}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground py-3 leading-relaxed">
+                      {exam.referenceRange && exam.referenceRange !== "null" ? (
+                        isExpanded || !hasLongRef ? (
+                          <span className="whitespace-pre-wrap">{exam.referenceRange}</span>
+                        ) : (
+                          <span className="line-clamp-2">{exam.referenceRange}</span>
+                        )
+                      ) : (
+                        <span className="text-muted-foreground/50">—</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Resumo Clínico por IA */}
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <div className="flex items-center justify-between p-4 border-b border-border/60">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <span className="text-sm font-semibold text-foreground">Resumo Clínico</span>
+            {summaryText && !isEditingSummary && (
+              <span className="text-[10px] bg-green-50 text-green-700 border border-green-200 px-1.5 py-0.5 rounded-full font-medium">Salvo</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {!summaryText && !generateSummary.isPending && (
+              <Button
+                size="sm"
+                onClick={() => generateSummary.mutate({ sessionId })}
+                disabled={generateSummary.isPending}
+                className="flex items-center gap-1.5 h-8 text-xs"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                Gerar com IA
+              </Button>
+            )}
+            {summaryText && !isEditingSummary && (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => generateSummary.mutate({ sessionId })}
+                  disabled={generateSummary.isPending}
+                  className="flex items-center gap-1.5 h-8 text-xs"
+                >
+                  {generateSummary.isPending
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    : <Sparkles className="h-3.5 w-3.5" />}
+                  {generateSummary.isPending ? "Gerando…" : "Regenerar"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleStartEdit}
+                  className="flex items-center gap-1.5 h-8 text-xs"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  Editar
+                </Button>
+              </>
+            )}
+            {isEditingSummary && (
+              <>
+                <Button
+                  size="sm"
+                  onClick={handleSaveEdit}
+                  disabled={saveSummary.isPending}
+                  className="flex items-center gap-1.5 h-8 text-xs"
+                >
+                  {saveSummary.isPending
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    : <Check className="h-3.5 w-3.5" />}
+                  Salvar
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleCancelEdit}
+                  className="flex items-center gap-1.5 h-8 text-xs"
+                >
+                  <X className="h-3.5 w-3.5" />
+                  Cancelar
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="p-4">
+          {generateSummary.isPending && !summaryText ? (
+            <div className="flex items-center gap-3 py-6 justify-center text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              <span className="text-sm">Analisando exames e gerando resumo clínico…</span>
+            </div>
+          ) : isEditingSummary ? (
+            <Textarea
+              value={editBuffer}
+              onChange={(e) => setEditBuffer(e.target.value)}
+              className="min-h-[160px] text-sm leading-relaxed resize-y"
+              placeholder="Digite o resumo clínico aqui…"
+              autoFocus
+            />
+          ) : summaryText ? (
+            <div className="relative">
+              {generateSummary.isPending && (
+                <div className="absolute inset-0 bg-background/60 flex items-center justify-center rounded-lg z-10">
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                </div>
+              )}
+              <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{summaryText}</p>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
+              <Sparkles className="h-8 w-8 text-muted-foreground/40" />
+              <div>
+                <p className="text-sm font-medium text-foreground">Resumo Clínico por IA</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Clique em "Gerar com IA" para criar um resumo clínico interpretativo dos resultados.<br />
+                  O texto gerado pode ser editado antes de salvar ou exportar.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Fontes RAG com feedback */}
+        {ragChunks.length > 0 && !isEditingSummary && (
+          <div className="border-t border-border/60">
+            <div className="px-4 py-3 flex items-center gap-2">
+              <BookOpen className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Fontes consultadas</span>
+              <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full">{ragChunks.length}</span>
+            </div>
+            <div className="px-4 pb-4 flex flex-col gap-3">
+              {ragChunks.map((chunk) => {
+                const vote = localVotes[chunk.id];
+                return (
+                  <div
+                    key={chunk.id}
+                    className="rounded-lg border border-border/70 bg-muted/30 p-3 flex flex-col gap-2"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] font-semibold text-primary mb-1 truncate">{chunk.source}</p>
+                        <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{chunk.chunkText}</p>
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button
+                          onClick={() => handleVote(chunk.id, "up")}
+                          title="Este trecho foi útil"
+                          className={`p-1.5 rounded-md transition-colors ${
+                            vote === "up"
+                              ? "bg-green-100 text-green-700 border border-green-300"
+                              : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          <ThumbsUp className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleVote(chunk.id, "down")}
+                          title="Este trecho não foi útil"
+                          className={`p-1.5 rounded-md transition-colors ${
+                            vote === "down"
+                              ? "bg-red-100 text-red-700 border border-red-300"
+                              : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          <ThumbsDown className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Método */}
+      {session.method && (
+        <div className="bg-card border border-border rounded-xl p-4">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Método</p>
+          <p className="text-xs text-foreground leading-relaxed">{session.method}</p>
+        </div>
+      )}
+
+      {/* Observations */}
+      {session.observations && (
+        <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <button
+            className="w-full flex items-center justify-between p-4 text-left"
+            onClick={() => setObsExpanded(!obsExpanded)}
+          >
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-primary" />
+              <span className="text-sm font-semibold text-foreground">Observações do Laudo</span>
+            </div>
+            {obsExpanded
+              ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
+              : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+          </button>
+          {obsExpanded && (
+            <div className="px-4 pb-4 border-t border-border/60 pt-3">
+              <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                {session.observations}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
+  // ── Conteúdo de exame de imagem ───────────────────────────────────────────
+  const imagingContent = (
+    <div className="space-y-6">
+      {imagingLoading ? (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        </div>
+      ) : !imagingReport ? (
+        <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
+          <ImageIcon className="h-10 w-10 text-muted-foreground/30" />
+          <p className="text-sm text-muted-foreground">Laudo de imagem não encontrado.</p>
+        </div>
+      ) : (
+        <>
+          {/* Dados do paciente (imagem) */}
+          <div className="bg-card border border-border rounded-xl p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <User className="h-4 w-4 text-primary" />
+              <h2 className="font-semibold text-sm text-foreground">Dados do Paciente</h2>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-3">
+              {[
+                { label: "Paciente", value: imagingReport.patientName },
+                { label: "Data de Nascimento", value: imagingReport.patientDob },
+                { label: "Tipo de Exame", value: imagingReport.examType },
+                { label: "Data do Exame", value: imagingReport.examDate },
+                { label: "Médico Solicitante", value: imagingReport.requestingDoctor },
+                { label: "Médico Responsável", value: imagingReport.responsibleDoctor },
+              ]
+                .filter((f) => f.value)
+                .map(({ label, value }) => (
+                  <div key={label}>
+                    <p className="text-xs text-muted-foreground">{label}</p>
+                    <p className="text-sm font-medium text-foreground mt-0.5">{value}</p>
+                  </div>
+                ))}
+            </div>
+          </div>
+
+          {/* Técnica */}
+          {imagingReport.technique && (
+            <div className="bg-card border border-border rounded-xl p-5">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Técnica</p>
+              <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{imagingReport.technique}</p>
+            </div>
+          )}
+
+          {/* Descrição */}
+          {imagingReport.description && (
+            <div className="bg-card border border-border rounded-xl p-5">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Descrição</p>
+              <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{imagingReport.description}</p>
+            </div>
+          )}
+
+          {/* Conclusão */}
+          {imagingReport.conclusion && (
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-5">
+              <p className="text-xs font-semibold text-primary uppercase tracking-wide mb-2">Conclusão</p>
+              <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{imagingReport.conclusion}</p>
+            </div>
+          )}
+
+          {/* Observações */}
+          {imagingReport.observations && (
+            <div className="bg-card border border-border rounded-xl p-5">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Observações</p>
+              <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{imagingReport.observations}</p>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -426,335 +812,26 @@ export default function Analysis() {
         </div>
       </header>
 
-      <main className="flex-1 container py-6 space-y-6">
-        {/* Patient Info */}
-        <div className="bg-card border border-border rounded-xl p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <User className="h-4 w-4 text-primary" />
-            <h2 className="font-semibold text-sm text-foreground">Informações do Paciente</h2>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-3">
-            {[
-              { label: "Nome", value: session.patientName },
-              { label: "Data de Nascimento", value: session.patientDob },
-              { label: "Sexo", value: session.patientSex },
-              { label: "Data da Coleta", value: session.collectionDate },
-              { label: "Data de Emissão", value: session.emissionDate },
-              { label: "Laboratório", value: session.laboratory },
-              { label: "Médico Solicitante", value: session.requestingDoctor },
-              { label: "Médico Responsável", value: session.responsibleDoctor },
-              { label: "Atendimento Nº", value: session.attendanceNumber },
-              { label: "Material", value: session.material },
-            ]
-              .filter((f) => f.value)
-              .map(({ label, value }) => (
-                <div key={label}>
-                  <p className="text-xs text-muted-foreground">{label}</p>
-                  <p className="text-sm font-medium text-foreground mt-0.5">{value}</p>
-                </div>
-              ))}
-          </div>
-        </div>
-
-        {/* Summary */}
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-3 flex-wrap">
-            <h3 className="font-semibold text-foreground">
-              Resultados dos Exames
-              <span className="ml-2 text-sm font-normal text-muted-foreground">
-                ({session.exams.length} exame{session.exams.length !== 1 ? "s" : ""})
-              </span>
-            </h3>
-            {/* Legenda */}
-            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-              <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full font-medium"><TrendingUp className="h-2.5 w-2.5" /> Elevado</span>
-              <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded-full font-medium"><TrendingDown className="h-2.5 w-2.5" /> Baixo</span>
-              <span className="inline-flex items-center gap-1 bg-red-50 text-red-700 border border-red-200 px-1.5 py-0.5 rounded-full font-medium"><AlertTriangle className="h-2.5 w-2.5" /> Alterado</span>
-            </div>
-          </div>
-          <div className="relative w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar exame..."
-              className="pl-9 h-9 text-sm"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-        </div>
-
-        {/* Exams Table */}
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/40 hover:bg-muted/40">
-                <TableHead className="w-[30%] font-semibold text-foreground">Exame</TableHead>
-                <TableHead className="w-[12%] font-semibold text-foreground text-right">Resultado</TableHead>
-                <TableHead className="w-[8%] font-semibold text-foreground">Unidade</TableHead>
-                <TableHead className="w-[35%] font-semibold text-foreground">Valor de Referência</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-10 text-muted-foreground text-sm">
-                    Nenhum exame encontrado.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filtered.map((exam: any) => {
-                  const isExpanded = expandedId === exam.id;
-                  const hasLongRef = (exam.referenceRange ?? "").length > 60;
-                  const needsExpand = hasLongRef;
-                  const statusCls = classifyStatus(exam.status ?? "");
-                  const rowBg =
-                    statusCls === "elevado" ? "bg-amber-50/60 hover:bg-amber-50" :
-                    statusCls === "baixo"   ? "bg-blue-50/60 hover:bg-blue-50" :
-                    statusCls === "alterado"? "bg-red-50/60 hover:bg-red-50" :
-                    needsExpand ? "cursor-pointer hover:bg-muted/30" : "";
-
-                  return (
-                    <TableRow
-                      key={exam.id}
-                      className={`align-top transition-colors ${rowBg} ${needsExpand ? "cursor-pointer" : ""}`}
-                      onClick={needsExpand ? () => setExpandedId(isExpanded ? null : exam.id) : undefined}
-                    >
-                      <TableCell className="font-medium text-sm text-foreground py-3">
-                        <div className="flex items-start gap-2">
-                          {needsExpand && (
-                            <span className="mt-0.5 text-muted-foreground flex-shrink-0">
-                              {isExpanded
-                                ? <ChevronUp className="h-3.5 w-3.5" />
-                                : <ChevronDown className="h-3.5 w-3.5" />}
-                            </span>
-                          )}
-                          <span>{exam.name}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right py-3">
-                        <div className="flex flex-col items-end gap-1">
-                          <span className="font-mono font-semibold text-sm text-foreground">{exam.result ?? "—"}</span>
-                          <StatusBadge status={exam.status ?? ""} />
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground py-3">
-                        {exam.unit || "—"}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground py-3 leading-relaxed">
-                        {exam.referenceRange && exam.referenceRange !== "null" ? (
-                          isExpanded || !hasLongRef ? (
-                            <span className="whitespace-pre-wrap">{exam.referenceRange}</span>
-                          ) : (
-                            <span className="line-clamp-2">{exam.referenceRange}</span>
-                          )
-                        ) : (
-                          <span className="text-muted-foreground/50">—</span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </div>
-
-        {/* Resumo Clínico por IA */}
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <div className="flex items-center justify-between p-4 border-b border-border/60">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-primary" />
-              <span className="text-sm font-semibold text-foreground">Resumo Clínico</span>
-              {summaryText && !isEditingSummary && (
-                <span className="text-[10px] bg-green-50 text-green-700 border border-green-200 px-1.5 py-0.5 rounded-full font-medium">Salvo</span>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              {!summaryText && !generateSummary.isPending && (
-                <Button
-                  size="sm"
-                  onClick={() => generateSummary.mutate({ sessionId })}
-                  disabled={generateSummary.isPending}
-                  className="flex items-center gap-1.5 h-8 text-xs"
-                >
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Gerar com IA
-                </Button>
-              )}
-              {summaryText && !isEditingSummary && (
-                <>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => generateSummary.mutate({ sessionId })}
-                    disabled={generateSummary.isPending}
-                    className="flex items-center gap-1.5 h-8 text-xs"
-                  >
-                    {generateSummary.isPending
-                      ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      : <Sparkles className="h-3.5 w-3.5" />}
-                    {generateSummary.isPending ? "Gerando…" : "Regenerar"}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleStartEdit}
-                    className="flex items-center gap-1.5 h-8 text-xs"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                    Editar
-                  </Button>
-                </>
-              )}
-              {isEditingSummary && (
-                <>
-                  <Button
-                    size="sm"
-                    onClick={handleSaveEdit}
-                    disabled={saveSummary.isPending}
-                    className="flex items-center gap-1.5 h-8 text-xs"
-                  >
-                    {saveSummary.isPending
-                      ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      : <Check className="h-3.5 w-3.5" />}
-                    Salvar
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleCancelEdit}
-                    className="flex items-center gap-1.5 h-8 text-xs"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                    Cancelar
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
-
-          <div className="p-4">
-            {generateSummary.isPending && !summaryText ? (
-              <div className="flex items-center gap-3 py-6 justify-center text-muted-foreground">
-                <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                <span className="text-sm">Analisando exames e gerando resumo clínico…</span>
-              </div>
-            ) : isEditingSummary ? (
-              <Textarea
-                value={editBuffer}
-                onChange={(e) => setEditBuffer(e.target.value)}
-                className="min-h-[160px] text-sm leading-relaxed resize-y"
-                placeholder="Digite o resumo clínico aqui…"
-                autoFocus
-              />
-            ) : summaryText ? (
-              <div className="relative">
-                {generateSummary.isPending && (
-                  <div className="absolute inset-0 bg-background/60 flex items-center justify-center rounded-lg z-10">
-                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                  </div>
-                )}
-                <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{summaryText}</p>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
-                <Sparkles className="h-8 w-8 text-muted-foreground/40" />
-                <div>
-                  <p className="text-sm font-medium text-foreground">Resumo Clínico por IA</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Clique em "Gerar com IA" para criar um resumo clínico interpretativo dos resultados.<br />
-                    O texto gerado pode ser editado antes de salvar ou exportar.
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Fontes RAG com feedback */}
-          {ragChunks.length > 0 && !isEditingSummary && (
-            <div className="border-t border-border/60">
-              <div className="px-4 py-3 flex items-center gap-2">
-                <BookOpen className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Fontes consultadas</span>
-                <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full">{ragChunks.length}</span>
-              </div>
-              <div className="px-4 pb-4 flex flex-col gap-3">
-                {ragChunks.map((chunk) => {
-                  const vote = localVotes[chunk.id];
-                  return (
-                    <div
-                      key={chunk.id}
-                      className="rounded-lg border border-border/70 bg-muted/30 p-3 flex flex-col gap-2"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[10px] font-semibold text-primary mb-1 truncate">{chunk.source}</p>
-                          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{chunk.chunkText}</p>
-                        </div>
-                        <div className="flex items-center gap-1 flex-shrink-0">
-                          <button
-                            onClick={() => handleVote(chunk.id, "up")}
-                            title="Este trecho foi útil"
-                            className={`p-1.5 rounded-md transition-colors ${
-                              vote === "up"
-                                ? "bg-green-100 text-green-700 border border-green-300"
-                                : "hover:bg-muted text-muted-foreground hover:text-foreground"
-                            }`}
-                          >
-                            <ThumbsUp className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            onClick={() => handleVote(chunk.id, "down")}
-                            title="Este trecho não foi útil"
-                            className={`p-1.5 rounded-md transition-colors ${
-                              vote === "down"
-                                ? "bg-red-100 text-red-700 border border-red-300"
-                                : "hover:bg-muted text-muted-foreground hover:text-foreground"
-                            }`}
-                          >
-                            <ThumbsDown className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Método */}
-        {session.method && (
-          <div className="bg-card border border-border rounded-xl p-4">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Método</p>
-            <p className="text-xs text-foreground leading-relaxed">{session.method}</p>
-          </div>
-        )}
-
-        {/* Observations */}
-        {session.observations && (
-          <div className="bg-card border border-border rounded-xl overflow-hidden">
-            <button
-              className="w-full flex items-center justify-between p-4 text-left"
-              onClick={() => setObsExpanded(!obsExpanded)}
-            >
-              <div className="flex items-center gap-2">
-                <FileText className="h-4 w-4 text-primary" />
-                <span className="text-sm font-semibold text-foreground">Observações do Laudo</span>
-              </div>
-              {obsExpanded
-                ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-            </button>
-            {obsExpanded && (
-              <div className="px-4 pb-4 border-t border-border/60 pt-3">
-                <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                  {session.observations}
-                </p>
-              </div>
-            )}
-          </div>
+      <main className="flex-1 container py-6">
+        {/* Modo dual-tab: Lab + Imagem */}
+        {imagingId ? (
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "lab" | "imaging")}>
+            <TabsList className="mb-6">
+              <TabsTrigger value="lab" className="flex items-center gap-1.5">
+                <FlaskConical className="h-3.5 w-3.5" />
+                Exames Laboratoriais
+              </TabsTrigger>
+              <TabsTrigger value="imaging" className="flex items-center gap-1.5">
+                <ImageIcon className="h-3.5 w-3.5" />
+                Exame de Imagem
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="lab">{labContent}</TabsContent>
+            <TabsContent value="imaging">{imagingContent}</TabsContent>
+          </Tabs>
+        ) : (
+          /* Modo simples: apenas Lab */
+          labContent
         )}
       </main>
 
