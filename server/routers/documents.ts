@@ -283,34 +283,37 @@ export const documentsRouter = router({
           }
         }
 
-        // Concatenar todo o texto extraído (ordenado por número de página)
+        // Ordenar páginas OCR por número de página
         allOcrPages.sort((a, b) => a.pageNumber - b.pageNumber);
-        const fullText = allOcrPages.map((p) => p.text).join("\n\n");
 
-        // Determinar tipo do documento:
-        // Prioridade 1: classificações enviadas pelo frontend (estado atual da UI)
-        // Prioridade 2: classificações salvas no banco (fallback)
-        const classifications = input.selectedPageNumbers.map((pageNum) => {
+        // Extrair nome do paciente do nome do arquivo (fallback)
+        const fileBaseName = doc.originalName.replace(/\.[^.]+$/, "");
+
+        // ── Separar páginas por tipo (Lab vs Imagem) ──────────────────────────
+        // Usar classificações do frontend (prioridade) ou do banco (fallback)
+        const getPageType = (pageNum: number): "laudo" | "imagem" | "indefinido" => {
           if (input.pageClassifications) {
             const frontendClass = input.pageClassifications[String(pageNum)];
             if (frontendClass) return frontendClass as "laudo" | "imagem" | "indefinido";
           }
           const dbPage = savedPages.find((p) => p.pageNumber === pageNum);
           return (dbPage?.classification ?? "indefinido") as "laudo" | "imagem" | "indefinido";
+        };
+
+        const labPages = allOcrPages.filter((p) => {
+          const t = getPageType(p.pageNumber);
+          return t === "laudo" || t === "indefinido"; // indefinido vai para lab como fallback
         });
+        const imagingPages = allOcrPages.filter((p) => getPageType(p.pageNumber) === "imagem");
 
-        const docType = detectDocumentType(classifications);
+        // ── Resultados múltiplos ──────────────────────────────────────────────
+        const results: Array<{ type: "lab" | "imaging"; id: number; fileName: string }> = [];
 
-        // Extrair nome do paciente do nome do arquivo (fallback)
-        const fileBaseName = doc.originalName.replace(/\.[^.]+$/, "");
-
-        let resultId: number;
-        let resultType: "lab" | "imaging";
-        let fileName: string;
-
-        if (docType === "lab") {
-          const labData = await extractLabJson(fullText, fileBaseName);
-          fileName = generateFileName(labData.paciente_nome || fileBaseName, "lab");
+        // Processar grupo Lab
+        if (labPages.length > 0) {
+          const labText = labPages.map((p) => p.text).join("\n\n");
+          const labData = await extractLabJson(labText, fileBaseName);
+          const labFileName = generateFileName(labData.paciente_nome || fileBaseName, "lab");
 
           const db = await getDb();
           if (!db) throw new Error("Database not available");
@@ -334,8 +337,7 @@ export const documentsRouter = router({
           });
 
           const sessionId = (sessionResult[0] as any).insertId as number;
-          resultId = sessionId;
-          resultType = "lab";
+          results.push({ type: "lab", id: sessionId, fileName: labFileName });
 
           if (labData.exames && labData.exames.length > 0) {
             for (const exam of labData.exames) {
@@ -349,9 +351,13 @@ export const documentsRouter = router({
               });
             }
           }
-        } else {
-          const imagingData = await extractImagingJson(fullText, fileBaseName);
-          fileName = generateFileName(
+        }
+
+        // Processar grupo Imagem
+        if (imagingPages.length > 0) {
+          const imagingText = imagingPages.map((p) => p.text).join("\n\n");
+          const imagingData = await extractImagingJson(imagingText, fileBaseName);
+          const imagingFileName = generateFileName(
             imagingData.paciente_nome || fileBaseName,
             "imaging",
             imagingData.tipo_exame
@@ -373,17 +379,62 @@ export const documentsRouter = router({
             rawJson: imagingData as any,
           });
 
-          resultId = reportId;
-          resultType = "imaging";
+          results.push({ type: "imaging", id: reportId, fileName: imagingFileName });
+        }
+
+        // Fallback: se nenhum grupo foi processado (ex: todas indefinido sem páginas lab)
+        if (results.length === 0) {
+          const fullText = allOcrPages.map((p) => p.text).join("\n\n");
+          const labData = await extractLabJson(fullText, fileBaseName);
+          const labFileName = generateFileName(labData.paciente_nome || fileBaseName, "lab");
+          const db = await getDb();
+          if (!db) throw new Error("Database not available");
+          const sessionResult = await db.insert(examSessions).values({
+            userId: ctx.user.id,
+            documentId: input.documentId,
+            patientName: labData.paciente_nome,
+            patientDob: labData.paciente_data_nascimento,
+            patientSex: labData.paciente_sexo,
+            collectionDate: labData.data_coleta,
+            emissionDate: labData.data_emissao,
+            requestingDoctor: labData.medico_solicitante,
+            responsibleDoctor: labData.medico_responsavel,
+            laboratory: labData.laboratorio,
+            attendanceNumber: labData.numero_atendimento,
+            material: labData.material,
+            method: labData.metodo,
+            observations: labData.observacoes,
+            rawJson: labData as any,
+          });
+          const sessionId = (sessionResult[0] as any).insertId as number;
+          results.push({ type: "lab", id: sessionId, fileName: labFileName });
+          if (labData.exames && labData.exames.length > 0) {
+            const db2 = await getDb();
+            if (db2) {
+              for (const exam of labData.exames) {
+                await db2.insert(exams).values({
+                  sessionId,
+                  name: exam.nome,
+                  result: exam.resultado,
+                  unit: exam.unidade,
+                  referenceRange: exam.valor_referencia,
+                  status: exam.status,
+                });
+              }
+            }
+          }
         }
 
         await updateDocumentStatus(input.documentId, "done");
 
+        // Compatibilidade retroativa: manter resultType/resultId para o primeiro resultado
+        const primaryResult = results[0];
         return {
-          resultType,
-          resultId,
-          fileName,
+          resultType: primaryResult.type,
+          resultId: primaryResult.id,
+          fileName: primaryResult.fileName,
           pagesProcessed: allOcrPages.length,
+          results, // novo campo com todos os resultados
         };
       } catch (err: any) {
         await updateDocumentStatus(input.documentId, "error");

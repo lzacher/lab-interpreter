@@ -320,10 +320,20 @@ export default function ReviewPage() {
       });
 
       setPollingEnabled(false);
-      if (result.resultType === "lab") {
-        navigate(`/analysis/${result.resultId}`);
+      // Suporte a múltiplos resultados (lab + imagem no mesmo documento)
+      const allResults = result.results ?? [{ type: result.resultType, id: result.resultId }];
+      const labResult = allResults.find((r: { type: string; id: number }) => r.type === "lab");
+      const imagingResult = allResults.find((r: { type: string; id: number }) => r.type === "imaging");
+
+      if (labResult && imagingResult) {
+        // Ambos: navegar para analysis com imagingId como query param
+        navigate(`/analysis/${labResult.id}?imagingId=${imagingResult.id}`);
+      } else if (labResult) {
+        navigate(`/analysis/${labResult.id}`);
+      } else if (imagingResult) {
+        navigate(`/imaging/${imagingResult.id}`);
       } else {
-        navigate(`/imaging/${result.resultId}`);
+        navigate(`/analysis/${result.resultId}`);
       }
     } catch (err: any) {
       console.error("[Review] process error:", err);
