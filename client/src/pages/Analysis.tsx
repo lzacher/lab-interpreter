@@ -288,7 +288,8 @@ export default function Analysis() {
         const tableEndY = (doc as any).lastAutoTable?.finalY ?? y;
         const pageH = doc.internal.pageSize.getHeight();
         const lineHeight = 4.5; // ~8pt font
-        const summaryLines = doc.splitTextToSize(currentSummary, pageW - margin * 2);
+        const textWidth = pageW - margin * 2 - 4; // 4mm safety margin on right
+        const summaryLines = doc.splitTextToSize(currentSummary, textWidth);
         const summaryBlockH = summaryLines.length * lineHeight + 16; // header + lines
 
         // Se o bloco inteiro não cabe na página atual, abrir nova página
