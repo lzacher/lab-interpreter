@@ -1,47 +1,34 @@
 /**
- * RAG (Retrieval-Augmented Generation) module for MedSuite.
+ * RAG (Retrieval-Augmented Generation) module
  *
- * Uses a local Python embedding microservice to generate query embeddings,
- * then performs vector similarity search in TiDB to retrieve relevant
- * chunks from medical reference books.
- *
- * Architecture:
- *   Node.js server → Python embedding service (port 5001) → TiDB vector search
+ * Uses keyword-based search (LIKE) on the knowledge_base table to find
+ * relevant chunks from medical reference books. No external dependencies —
+ * works in any environment that has a MySQL/TiDB connection.
  */
+
 import mysql2 from "mysql2/promise";
 
-const EMBEDDING_SERVICE_URL =
-  process.env.EMBEDDING_SERVICE_URL || "http://127.0.0.1:5001";
-const TOP_K = 5; // Number of chunks to retrieve
-const MAX_CONTEXT_CHARS = 4000; // Max chars for RAG context in prompt
-
-// ─── Types ──────────────────────────────────────────────────────────────────
+const TOP_K = 5;
+const MAX_CONTEXT_CHARS = 3000;
 
 export interface KnowledgeChunk {
   id: number;
   source: string;
   chunkIndex: number;
   chunkText: string;
-  distance?: number;
+  score?: number;
 }
 
 export interface RagResult {
-  /** Formatted context string to inject into the LLM prompt */
   context: string;
-  /** Chunks actually used (with id, source, text) for UI display */
   chunks: KnowledgeChunk[];
 }
 
-// ─── DB connection ───────────────────────────────────────────────────────────
+// --- DB connection ---
 
-/**
- * Create a short-lived mysql2 connection for RAG queries.
- * Uses a separate connection (not the drizzle pool) to avoid lifecycle issues.
- */
 async function createRagConnection(): Promise<mysql2.Connection | null> {
   const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl) return null;
-
   try {
     const url = new URL(dbUrl);
     const conn = await mysql2.createConnection({
@@ -60,153 +47,183 @@ async function createRagConnection(): Promise<mysql2.Connection | null> {
   }
 }
 
-// ─── Embedding generation ────────────────────────────────────────────────────
+// --- Keyword term extraction ---
 
-async function generateEmbeddings(texts: string[]): Promise<number[][]> {
-  try {
-    const response = await fetch(`${EMBEDDING_SERVICE_URL}/embed`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ texts }),
-      signal: AbortSignal.timeout(10000),
-    });
+const ALIAS_MAP: Record<string, string[]> = {
+  creatinina: ["creatinine", "creatinina"],
+  creatinine: ["creatinine", "creatinina"],
+  ureia: ["urea", "ureia", "BUN"],
+  urea: ["urea", "ureia", "BUN"],
+  bun: ["BUN", "urea", "ureia"],
+  "taxa de filtracao glomerular": ["glomerular filtration", "GFR", "TFG"],
+  "taxa de filtra\u00e7\u00e3o glomerular": ["glomerular filtration", "GFR", "TFG"],
+  tfg: ["GFR", "glomerular filtration", "TFG"],
+  gfr: ["GFR", "glomerular filtration"],
+  hemoglobina: ["hemoglobin", "hemoglobina", "Hgb"],
+  hemoglobin: ["hemoglobin", "hemoglobina"],
+  "hemat\u00f3crito": ["hematocrit", "Hct"],
+  ferritina: ["ferritin", "ferritina"],
+  ferritin: ["ferritin", "ferritina"],
+  ferro: ["iron", "ferro", "serum iron"],
+  iron: ["iron", "ferro"],
+  glicose: ["glucose", "glicose", "glicemia"],
+  glucose: ["glucose", "glicose"],
+  glicemia: ["glucose", "glicose", "glicemia"],
+  "hemoglobina glicada": ["glycated hemoglobin", "HbA1c"],
+  hba1c: ["HbA1c", "glycated hemoglobin"],
+  colesterol: ["cholesterol", "colesterol"],
+  cholesterol: ["cholesterol", "colesterol"],
+  "triglicer\u00eddeos": ["triglycerides", "triglyceride"],
+  triglycerides: ["triglycerides"],
+  hdl: ["HDL", "HDL cholesterol"],
+  ldl: ["LDL", "LDL cholesterol"],
+  alt: ["ALT", "alanine aminotransferase", "SGPT", "TGP"],
+  tgp: ["ALT", "alanine aminotransferase", "TGP"],
+  ast: ["AST", "aspartate aminotransferase", "SGOT", "TGO"],
+  tgo: ["AST", "aspartate aminotransferase", "TGO"],
+  "fosfatase alcalina": ["alkaline phosphatase", "ALP"],
+  ggt: ["GGT", "gamma-glutamyl transferase"],
+  bilirrubina: ["bilirubin", "bilirrubina"],
+  bilirubin: ["bilirubin", "bilirrubina"],
+  tsh: ["TSH", "thyroid stimulating hormone"],
+  t4: ["T4", "thyroxine", "tiroxina"],
+  t3: ["T3", "triiodothyronine"],
+  "prote\u00edna c reativa": ["C-reactive protein", "CRP", "PCR"],
+  pcr: ["CRP", "C-reactive protein", "PCR"],
+  vhs: ["ESR", "erythrocyte sedimentation", "VHS"],
+  "s\u00f3dio": ["sodium", "Na"],
+  sodium: ["sodium"],
+  "pot\u00e1ssio": ["potassium", "K"],
+  potassium: ["potassium"],
+  "c\u00e1lcio": ["calcium", "Ca"],
+  calcium: ["calcium"],
+  "magn\u00e9sio": ["magnesium"],
+  inr: ["INR", "prothrombin time", "PT"],
+  troponina: ["troponin", "troponina"],
+  psa: ["PSA", "prostate specific antigen"],
+  "vitamina d": ["vitamin D", "25-hydroxyvitamin"],
+  "vitamina b12": ["vitamin B12", "cobalamin"],
+  "\u00e1cido f\u00f3lico": ["folic acid", "folate"],
+};
 
-    if (!response.ok) {
-      throw new Error(`Embedding service error: ${response.status}`);
+function extractSearchTerms(examNames: string[]): string[] {
+  const terms = new Set<string>();
+  for (const name of examNames) {
+    const key = name.toLowerCase().trim();
+    terms.add(name);
+    const mapped = ALIAS_MAP[key];
+    if (mapped) {
+      mapped.forEach((t) => terms.add(t));
+    } else {
+      for (const [aliasKey, aliases] of Object.entries(ALIAS_MAP)) {
+        if (key.includes(aliasKey) || aliasKey.includes(key)) {
+          aliases.forEach((t) => terms.add(t));
+        }
+      }
     }
-
-    const data = (await response.json()) as {
-      embeddings: number[][];
-      dim: number;
-    };
-    return data.embeddings;
-  } catch (error) {
-    console.warn("[RAG] Embedding service unavailable:", error);
-    return [];
   }
+  return Array.from(terms).filter((t) => t.length >= 3);
 }
 
-// ─── Vector search ───────────────────────────────────────────────────────────
+// --- Keyword search ---
 
-async function vectorSearch(
-  embedding: number[],
-  topK: number = TOP_K
-): Promise<KnowledgeChunk[]> {
+async function keywordSearch(terms: string[], topK: number): Promise<KnowledgeChunk[]> {
+  if (terms.length === 0) return [];
   const conn = await createRagConnection();
   if (!conn) return [];
 
   try {
-    const embStr = "[" + embedding.map((v) => v.toFixed(6)).join(",") + "]";
+    const capped = terms.slice(0, 15);
+    const likeParams = capped.map((t) => `%${t}%`);
 
-    const [rows] = await conn.execute(
-      `SELECT id, source, chunk_index, chunk_text,
-              VEC_COSINE_DISTANCE(embedding, ?) as dist
-       FROM knowledge_base
-       ORDER BY dist ASC
-       LIMIT ${topK}`,
-      [embStr]
-    );
+    const scoreExpr = capped.map(() => `CASE WHEN chunk_text LIKE ? THEN 1 ELSE 0 END`).join(" + ");
+    const whereClause = capped.map(() => `chunk_text LIKE ?`).join(" OR ");
 
-    return (rows as any[]).map((row: any) => ({
-      id: Number(row.id),
-      source: row.source as string,
-      chunkIndex: row.chunk_index as number,
-      chunkText: (row.chunk_text as string) ?? "",
-      distance: row.dist as number,
-    }));
+    const sql = `
+      SELECT id, source, chunk_index, chunk_text,
+             (${scoreExpr}) AS score
+      FROM knowledge_base
+      WHERE ${whereClause}
+      ORDER BY score DESC, id ASC
+      LIMIT ${topK * 3}
+    `;
+
+    const [rows] = await conn.execute(sql, [...likeParams, ...likeParams]) as [any[], any];
+
+    const seen = new Set<string>();
+    const result: KnowledgeChunk[] = [];
+    for (const row of rows) {
+      const dedupKey = row.chunk_text.substring(0, 80);
+      if (!seen.has(dedupKey)) {
+        seen.add(dedupKey);
+        result.push({
+          id: Number(row.id),
+          source: row.source as string,
+          chunkIndex: Number(row.chunk_index ?? 0),
+          chunkText: row.chunk_text as string,
+          score: Number(row.score),
+        });
+      }
+      if (result.length >= topK) break;
+    }
+    return result;
   } catch (error) {
-    console.warn("[RAG] Vector search error:", error);
+    console.warn("[RAG] Keyword search error:", error);
     return [];
   } finally {
     await conn.end();
   }
 }
 
-// ─── Main RAG function ───────────────────────────────────────────────────────
+// --- Main RAG function ---
 
-/**
- * Build a RAG context string and return the chunks used.
- *
- * @param examNames - List of exam names from the lab results
- * @param examValues - Optional list of exam values with status
- * @returns { context, chunks } — context for LLM, chunks for UI display
- */
 export async function buildRagContext(
   examNames: string[],
   examValues?: Array<{ name: string; value: string; status?: string }>
 ): Promise<RagResult> {
-  if (examNames.length === 0) {
+  if (examNames.length === 0) return { context: "", chunks: [] };
+
+  const terms = extractSearchTerms(examNames);
+  if (terms.length === 0) return { context: "", chunks: [] };
+
+  let chunks: KnowledgeChunk[] = [];
+  try {
+    chunks = await keywordSearch(terms, TOP_K);
+  } catch (err: any) {
+    console.warn("[RAG] Search failed:", err.message);
     return { context: "", chunks: [] };
   }
 
-  const abnormalExams = examValues?.filter(
-    (e) => e.status === "high" || e.status === "low" || e.status === "critical"
-  );
+  if (chunks.length === 0) return { context: "", chunks: [] };
 
-  const queryParts = [
-    ...examNames.slice(0, 10),
-    ...(abnormalExams?.map((e) => `${e.name} ${e.status}`) || []),
-    "interpretation clinical significance reference values",
-  ];
-
-  const query = queryParts.join(" ");
-
-  const embeddings = await generateEmbeddings([query]);
-  if (embeddings.length === 0) {
-    console.warn("[RAG] No embeddings generated, skipping RAG context");
-    return { context: "", chunks: [] };
-  }
-
-  const chunks = await vectorSearch(embeddings[0], TOP_K);
-  if (chunks.length === 0) {
-    return { context: "", chunks: [] };
-  }
-
-  // Format context for the prompt
-  let context = "## Referências de Literatura Médica\n\n";
-  context +=
-    "Os seguintes trechos de livros médicos de referência são relevantes para os exames presentes:\n\n";
-
+  let context = "## Refer\u00eancias de Literatura M\u00e9dica\n\n";
+  context += "Os seguintes trechos de livros m\u00e9dicos de refer\u00eancia s\u00e3o relevantes para os exames presentes:\n\n";
   let totalChars = context.length;
   const usedChunks: KnowledgeChunk[] = [];
 
   for (const chunk of chunks) {
     const chunkText = (chunk.chunkText ?? "").trim();
     if (!chunkText) continue;
-
-    const chunkHeader = `**Fonte: ${chunk.source}**\n`;
-    const chunkContent = `${chunkText}\n\n---\n\n`;
-    const chunkTotal = chunkHeader.length + chunkContent.length;
-
-    if (totalChars + chunkTotal > MAX_CONTEXT_CHARS) {
-      const remaining =
-        MAX_CONTEXT_CHARS - totalChars - chunkHeader.length - 10;
+    const entry = `**Fonte: ${chunk.source}**\n${chunkText}\n\n---\n\n`;
+    if (totalChars + entry.length > MAX_CONTEXT_CHARS) {
+      const remaining = MAX_CONTEXT_CHARS - totalChars - chunk.source.length - 20;
       if (remaining > 100) {
-        context +=
-          chunkHeader + chunkText.substring(0, remaining) + "...\n\n";
+        context += `**Fonte: ${chunk.source}**\n${chunkText.substring(0, remaining)}...\n\n`;
         usedChunks.push({ ...chunk, chunkText: chunkText.substring(0, remaining) + "..." });
       }
       break;
     }
-
-    context += chunkHeader + chunkContent;
-    totalChars += chunkTotal;
+    context += entry;
+    totalChars += entry.length;
     usedChunks.push(chunk);
   }
 
-  console.log(
-    `[RAG] Retrieved ${usedChunks.length} chunks (${totalChars} chars) for query: "${query.substring(0, 60)}..."`
-  );
-
+  console.log(`[RAG] Retrieved ${usedChunks.length} chunks (${totalChars} chars) for terms: ${terms.slice(0, 5).join(", ")}`);
   return { context, chunks: usedChunks };
 }
 
-// ─── Feedback ────────────────────────────────────────────────────────────────
+// --- Feedback ---
 
-/**
- * Save or update a user's vote on a RAG chunk.
- * Uses INSERT ... ON DUPLICATE KEY UPDATE to handle re-votes.
- */
 export async function saveRagFeedback(
   chunkId: number,
   sessionId: number,
@@ -215,7 +232,6 @@ export async function saveRagFeedback(
 ): Promise<boolean> {
   const conn = await createRagConnection();
   if (!conn) return false;
-
   try {
     await conn.execute(
       `INSERT INTO rag_feedback (chunk_id, session_id, user_id, vote)
@@ -232,25 +248,19 @@ export async function saveRagFeedback(
   }
 }
 
-/**
- * Get all feedback votes for a given session and user.
- * Returns a map of chunkId → vote.
- */
 export async function getRagFeedbackForSession(
   sessionId: number,
   userId: number
 ): Promise<Record<number, "up" | "down">> {
   const conn = await createRagConnection();
   if (!conn) return {};
-
   try {
     const [rows] = await conn.execute(
       `SELECT chunk_id, vote FROM rag_feedback WHERE session_id = ? AND user_id = ?`,
       [sessionId, userId]
-    );
-
+    ) as [any[], any];
     const result: Record<number, "up" | "down"> = {};
-    for (const row of rows as any[]) {
+    for (const row of rows) {
       result[Number(row.chunk_id)] = row.vote as "up" | "down";
     }
     return result;
@@ -259,19 +269,5 @@ export async function getRagFeedbackForSession(
     return {};
   } finally {
     await conn.end();
-  }
-}
-
-/**
- * Check if the embedding service is available.
- */
-export async function isEmbeddingServiceAvailable(): Promise<boolean> {
-  try {
-    const response = await fetch(`${EMBEDDING_SERVICE_URL}/health`, {
-      signal: AbortSignal.timeout(3000),
-    });
-    return response.ok;
-  } catch {
-    return false;
   }
 }

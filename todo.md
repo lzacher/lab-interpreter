@@ -226,3 +226,4 @@
 - [x] Frontend: cada fonte mostra: nome do livro, trecho truncado, botões 👍/👎
 - [x] Frontend: estado de feedback persiste (botão ativo após votar)
 - [x] Frontend: feedback enviado via trpc.lab.submitRagFeedback
+- [x] RAG refatorado para busca por palavras-chave (funciona em produção)
