@@ -295,7 +295,7 @@ export default function Home() {
               </h1>
               <p className="text-slate-500 text-sm mt-3 max-w-sm leading-relaxed">
                 Carregue um ou mais laudos do mesmo paciente em PDF ou JPG.
-                O sistema classifica, extrai e organiza os dados automaticamente.
+                Selecione o tipo de cada página e processe para extrair e organizar os dados.
               </p>
             </div>
 

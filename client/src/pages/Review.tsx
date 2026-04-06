@@ -452,10 +452,8 @@ export default function ReviewPage() {
         <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 text-sm text-blue-700 flex gap-2 items-start">
           <span className="font-bold mt-0.5">i</span>
           <span>
-            Clique em cada página para selecioná-la (borda azul = selecionada). Use o menu abaixo
-            para classificar como <strong>Laboratório / Relatório</strong> ou{" "}
-            <strong>Imagem diagnóstica</strong>. Clique na lupa para ampliar a página. Quando
-            estiver pronto, clique em <strong>Processar selecionadas</strong>.
+            Classifique cada página usando o menu abaixo do thumbnail: <strong>Laboratório / Relatório</strong>,{" "}
+            <strong>Imagem diagnóstica</strong> ou <strong>Indefinido</strong>. Clique na página para selecioná-la (borda azul = selecionada) e na lupa para ampliar. Quando estiver pronto, clique em <strong>Processar selecionadas</strong>.
           </span>
         </div>
       </div>
