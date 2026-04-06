@@ -342,6 +342,173 @@ export default function Analysis() {
     }
   }, [session, summaryText]);
 
+  // ── Exportação de PDF para exame de imagem ────────────────────────────────
+  const exportPdfImaging = useCallback(async () => {
+    if (!imagingReport) return;
+    setExportingPdf(true);
+    try {
+      const { jsPDF } = await import("jspdf");
+      const autoTable = (await import("jspdf-autotable")).default;
+
+      const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+      const margin = 14;
+
+      // ── Cabeçalho azul ──────────────────────────────────────────────────────
+      doc.setFillColor(29, 78, 216);
+      doc.rect(0, 0, pageW, 28, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("MedSuite — Laudo de Exame de Imagem", margin, 12);
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      doc.text(
+        `Gerado em: ${new Date().toLocaleString("pt-BR")}`,
+        margin,
+        20
+      );
+      doc.setTextColor(0, 0, 0);
+
+      let y = 36;
+
+      // ── Dados do paciente ───────────────────────────────────────────────────
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(29, 78, 216);
+      doc.text("Dados do Paciente", margin, y);
+      y += 5;
+      doc.setDrawColor(29, 78, 216);
+      doc.setLineWidth(0.3);
+      doc.line(margin, y, pageW - margin, y);
+      y += 3;
+      doc.setTextColor(0, 0, 0);
+
+      const infoRows = [
+        ["Paciente", imagingReport.patientName ?? "—"],
+        ["Data de Nascimento", imagingReport.patientDob ?? "—"],
+        ["Tipo de Exame", imagingReport.examType ?? "—"],
+        ["Data do Exame", imagingReport.examDate ?? "—"],
+        ["Médico Solicitante", imagingReport.requestingDoctor ?? "—"],
+        ["Médico Responsável", imagingReport.responsibleDoctor ?? "—"],
+      ].filter(([, v]) => v !== "—");
+
+      autoTable(doc, {
+        startY: y,
+        head: [],
+        body: infoRows,
+        theme: "plain",
+        styles: { fontSize: 9, cellPadding: 1.5 },
+        columnStyles: { 0: { fontStyle: "bold", cellWidth: 50 } },
+        margin: { left: margin, right: margin },
+      });
+      y = (doc as any).lastAutoTable.finalY + 8;
+
+      // ── Técnica ─────────────────────────────────────────────────────────────
+      if (imagingReport.technique) {
+        if (y > pageH - 30) { doc.addPage(); y = 20; }
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(29, 78, 216);
+        doc.text("Técnica", margin, y);
+        y += 5;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.setTextColor(40, 40, 40);
+        const techLines = doc.splitTextToSize(imagingReport.technique, pageW - margin * 2);
+        doc.text(techLines, margin, y);
+        y += techLines.length * 5 + 6;
+      }
+
+      // ── Descrição ───────────────────────────────────────────────────────────
+      if (imagingReport.description) {
+        if (y > pageH - 30) { doc.addPage(); y = 20; }
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(29, 78, 216);
+        doc.text("Descrição", margin, y);
+        y += 5;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.setTextColor(40, 40, 40);
+        const descLines = doc.splitTextToSize(imagingReport.description, pageW - margin * 2);
+        // Quebra de página linha a linha para descrições longas
+        for (const line of descLines) {
+          if (y > pageH - 14) { doc.addPage(); y = 20; }
+          doc.text(line, margin, y);
+          y += 5;
+        }
+        y += 4;
+      }
+
+      // ── Conclusão (destaque azul) ────────────────────────────────────────────
+      if (imagingReport.conclusion) {
+        if (y > pageH - 30) { doc.addPage(); y = 20; }
+        const concLines = doc.splitTextToSize(imagingReport.conclusion, pageW - margin * 2 - 8);
+        const blockH = concLines.length * 5 + 16;
+        doc.setFillColor(239, 246, 255);
+        doc.setDrawColor(29, 78, 216);
+        doc.setLineWidth(0.5);
+        doc.roundedRect(margin - 2, y - 4, pageW - margin * 2 + 4, blockH, 2, 2, "FD");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(29, 78, 216);
+        doc.text("Conclusão", margin + 2, y + 3);
+        y += 10;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.setTextColor(30, 50, 90);
+        for (const line of concLines) {
+          if (y > pageH - 14) { doc.addPage(); y = 20; }
+          doc.text(line, margin + 2, y);
+          y += 5;
+        }
+        y += 8;
+      }
+
+      // ── Observações ─────────────────────────────────────────────────────────
+      if (imagingReport.observations) {
+        if (y > pageH - 30) { doc.addPage(); y = 20; }
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(29, 78, 216);
+        doc.text("Observações", margin, y);
+        y += 5;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.setTextColor(40, 40, 40);
+        const obsLines = doc.splitTextToSize(imagingReport.observations, pageW - margin * 2);
+        for (const line of obsLines) {
+          if (y > pageH - 14) { doc.addPage(); y = 20; }
+          doc.text(line, margin, y);
+          y += 5;
+        }
+      }
+
+      // ── Rodapé ──────────────────────────────────────────────────────────────
+      const pageCount = (doc.internal as any).getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(7);
+        doc.setTextColor(150, 150, 150);
+        doc.text(
+          `Página ${i} de ${pageCount} — MedSuite — Documento gerado automaticamente. Sujeito à revisão médica.`,
+          pageW / 2,
+          pageH - 6,
+          { align: "center" }
+        );
+      }
+
+      const firstName = (imagingReport.patientName ?? "paciente").split(" ")[0].toLowerCase();
+      const examSlug = (imagingReport.examType ?? "imagem").replace(/\s+/g, "_").toLowerCase();
+      doc.save(`${firstName}_${examSlug}.pdf`);
+      toast.success("PDF exportado com sucesso!");
+    } finally {
+      setExportingPdf(false);
+    }
+  }, [imagingReport]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -799,7 +966,13 @@ export default function Analysis() {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => setShowExportModal(true)}
+              onClick={() => {
+                if (activeTab === "imaging" && imagingId) {
+                  exportPdfImaging();
+                } else {
+                  setShowExportModal(true);
+                }
+              }}
               disabled={exportingPdf}
               className="flex items-center gap-1.5"
             >

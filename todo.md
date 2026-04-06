@@ -229,3 +229,9 @@
 - [x] RAG refatorado para busca por palavras-chave (funciona em produção)
 - [x] Modal de seleção de seções antes de exportar PDF
 - [ ] Substituir classificação IA por seleção manual do usuário (thumbnails + tipo + páginas)
+
+## Feature: Exportar PDF do exame de imagem a partir da aba de resultados
+- [x] Implementar função exportPdfImaging no Analysis.tsx (reutiliza lógica do ImagingResult.tsx)
+- [x] Botão "Exportar PDF" no header detecta aba ativa e chama a função correta (lab ou imagem)
+- [x] PDF de imagem inclui: cabeçalho azul, dados do paciente, técnica, descrição, conclusão (destaque), observações, rodapé
+- [x] TypeScript: 0 erros | 60 testes passando
