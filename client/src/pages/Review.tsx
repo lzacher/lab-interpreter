@@ -288,6 +288,8 @@ export default function ReviewPage() {
   const selectNone = () => setPages((prev) => prev.map((p) => ({ ...p, selected: false })));
   const selectLaudos = () =>
     setPages((prev) => prev.map((p) => ({ ...p, selected: p.type === "laudo" })));
+  const setAllTypes = (type: PageType) =>
+    setPages((prev) => prev.map((p) => ({ ...p, type })));
 
   // ─── Process ──────────────────────────────────────────────────────────────
   async function handleProcess() {
@@ -419,19 +421,31 @@ export default function ReviewPage() {
 
           <StepIndicator />
 
-          <div className="flex items-center gap-2 flex-shrink-0 text-xs">
-            <span className="text-slate-400 hidden sm:inline">Selecionar:</span>
-            <button onClick={selectAll} className="text-blue-600 hover:text-blue-800 font-medium">
-              Todas
-            </button>
-            <span className="text-slate-300">|</span>
-            <button onClick={selectLaudos} className="text-blue-600 hover:text-blue-800 font-medium">
-              Laudos
-            </button>
-            <span className="text-slate-300">|</span>
-            <button onClick={selectNone} className="text-blue-600 hover:text-blue-800 font-medium">
-              Nenhuma
-            </button>
+          <div className="flex items-center gap-3 flex-shrink-0 text-xs flex-wrap justify-end">
+            <div className="flex items-center gap-1.5">
+              <span className="text-slate-400 hidden sm:inline">Selecionar:</span>
+              <button onClick={selectAll} className="text-blue-600 hover:text-blue-800 font-medium">Todas</button>
+              <span className="text-slate-300">|</span>
+              <button onClick={selectLaudos} className="text-blue-600 hover:text-blue-800 font-medium">Laudos</button>
+              <span className="text-slate-300">|</span>
+              <button onClick={selectNone} className="text-blue-600 hover:text-blue-800 font-medium">Nenhuma</button>
+            </div>
+            <div className="w-px h-4 bg-slate-200 hidden sm:block" />
+            <div className="flex items-center gap-1.5">
+              <span className="text-slate-400 hidden sm:inline">Classificar todas:</span>
+              <button
+                onClick={() => setAllTypes("laudo")}
+                className="px-2 py-0.5 rounded border border-emerald-300 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 font-medium transition-colors"
+              >
+                Lab
+              </button>
+              <button
+                onClick={() => setAllTypes("imagem")}
+                className="px-2 py-0.5 rounded border border-purple-300 text-purple-700 bg-purple-50 hover:bg-purple-100 font-medium transition-colors"
+              >
+                Imagem
+              </button>
+            </div>
           </div>
         </div>
       </header>
