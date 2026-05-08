@@ -1,9 +1,8 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useParams, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
   TableBody,
@@ -26,13 +25,6 @@ import {
   TrendingUp,
   TrendingDown,
   Plus,
-  Sparkles,
-  Pencil,
-  Check,
-  X,
-  ThumbsUp,
-  ThumbsDown,
-  BookOpen,
   ImageIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -95,17 +87,7 @@ export default function Analysis() {
   const [pdfSections, setPdfSections] = useState({
     patientInfo: true,
     results: true,
-    summary: true,
   });
-
-  // Resumo clínico
-  const [summaryText, setSummaryText] = useState("");
-  const [isEditingSummary, setIsEditingSummary] = useState(false);
-  const [editBuffer, setEditBuffer] = useState("");
-  // RAG chunks retornados pelo generateClinicalSummary
-  const [ragChunks, setRagChunks] = useState<Array<{ id: number; source: string; chunkText: string }>>([]);
-  // Votos locais: chunkId → "up" | "down"
-  const [localVotes, setLocalVotes] = useState<Record<number, "up" | "down">>({});
 
   const { data: session, isLoading } = trpc.lab.getSession.useQuery(
     { sessionId },
@@ -117,56 +99,6 @@ export default function Analysis() {
     { reportId: imagingId ?? 0 },
     { enabled: !!imagingId }
   );
-
-  // Carregar resumo salvo quando a sessão carregar
-  useEffect(() => {
-    if (session && (session as any).clinicalSummary) {
-      setSummaryText((session as any).clinicalSummary);
-    }
-  }, [session]);
-
-  const generateSummary = trpc.lab.generateClinicalSummary.useMutation({
-    onSuccess: (data) => {
-      setSummaryText(data.summary);
-      if (data.ragChunks) setRagChunks(data.ragChunks);
-      toast.success("Resumo clínico gerado com sucesso!");
-    },
-    onError: () => toast.error("Erro ao gerar resumo clínico."),
-  });
-
-  const saveSummary = trpc.lab.saveClinicalSummary.useMutation({
-    onSuccess: () => toast.success("Resumo salvo."),
-    onError: () => toast.error("Erro ao salvar resumo."),
-  });
-
-  const submitFeedback = trpc.lab.submitRagFeedback.useMutation();
-
-  const handleVote = (chunkId: number, vote: "up" | "down") => {
-    setLocalVotes((prev) => {
-      const current = prev[chunkId];
-      const next = current === vote ? undefined : vote;
-      const updated = { ...prev };
-      if (next) updated[chunkId] = next;
-      else delete updated[chunkId];
-      return updated;
-    });
-    submitFeedback.mutate({ chunkId, vote, sessionId });
-  };
-
-  const handleStartEdit = () => {
-    setEditBuffer(summaryText);
-    setIsEditingSummary(true);
-  };
-
-  const handleCancelEdit = () => {
-    setEditBuffer("");
-    setIsEditingSummary(false);
-  };
-
-  const handleSaveEdit = () => {
-    setSummaryText(editBuffer);
-    saveSummary.mutate({ sessionId, summary: editBuffer });
-  };
 
   const filtered = useMemo(() => {
     if (!session) return [];
@@ -282,45 +214,7 @@ export default function Analysis() {
         y = (doc as any).lastAutoTable.finalY + 6;
       }
 
-      // ── Resumo Clínico ─────────────────────────────────────────────────────
-      if (sections.summary && summaryText) {
-        const pageH = doc.internal.pageSize.getHeight();
-        const lineHeight = 5;
-        const textWidth = pageW - margin * 2 - 4;
-        const summaryLines = doc.splitTextToSize(summaryText, textWidth);
-        const blockHeight = summaryLines.length * lineHeight + 20;
-
-        if (y + blockHeight > pageH - 14) {
-          doc.addPage();
-          y = 20;
-        }
-
-        doc.setTextColor(30, 64, 103);
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "bold");
-        doc.text("Resumo Clínico", margin, y);
-        y += 5;
-        doc.setDrawColor(30, 64, 103);
-        doc.setLineWidth(0.3);
-        doc.line(margin, y, pageW - margin, y);
-        y += 5;
-
-        doc.setTextColor(40, 40, 40);
-        doc.setFontSize(8.5);
-        doc.setFont("helvetica", "normal");
-
-        let summaryY = y;
-        for (const line of summaryLines) {
-          if (summaryY > pageH - 14) {
-            doc.addPage();
-            summaryY = 20;
-          }
-          doc.text(line, margin, summaryY);
-          summaryY += lineHeight;
-        }
-      }
-
-      // ── Rodapé─────────────
+      // ── Rodapé ─────────────────────────────────────────────────────────────────────────────────────────
       const pageCount = (doc.internal as any).getNumberOfPages();
       for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
@@ -340,7 +234,7 @@ export default function Analysis() {
     } finally {
       setExportingPdf(false);
     }
-  }, [session, summaryText]);
+  }, [session]);
 
   // ── Exportação de PDF para exame de imagem ────────────────────────────────
   const exportPdfImaging = useCallback(async () => {
@@ -661,171 +555,6 @@ export default function Analysis() {
         </Table>
       </div>
 
-      {/* Resumo Clínico por IA */}
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
-        <div className="flex items-center justify-between p-4 border-b border-border/60">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" />
-            <span className="text-sm font-semibold text-foreground">Resumo Clínico</span>
-            {summaryText && !isEditingSummary && (
-              <span className="text-[10px] bg-green-50 text-green-700 border border-green-200 px-1.5 py-0.5 rounded-full font-medium">Salvo</span>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {!summaryText && !generateSummary.isPending && (
-              <Button
-                size="sm"
-                onClick={() => generateSummary.mutate({ sessionId })}
-                disabled={generateSummary.isPending}
-                className="flex items-center gap-1.5 h-8 text-xs"
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                Gerar com IA
-              </Button>
-            )}
-            {summaryText && !isEditingSummary && (
-              <>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => generateSummary.mutate({ sessionId })}
-                  disabled={generateSummary.isPending}
-                  className="flex items-center gap-1.5 h-8 text-xs"
-                >
-                  {generateSummary.isPending
-                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    : <Sparkles className="h-3.5 w-3.5" />}
-                  {generateSummary.isPending ? "Gerando…" : "Regenerar"}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleStartEdit}
-                  className="flex items-center gap-1.5 h-8 text-xs"
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                  Editar
-                </Button>
-              </>
-            )}
-            {isEditingSummary && (
-              <>
-                <Button
-                  size="sm"
-                  onClick={handleSaveEdit}
-                  disabled={saveSummary.isPending}
-                  className="flex items-center gap-1.5 h-8 text-xs"
-                >
-                  {saveSummary.isPending
-                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    : <Check className="h-3.5 w-3.5" />}
-                  Salvar
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleCancelEdit}
-                  className="flex items-center gap-1.5 h-8 text-xs"
-                >
-                  <X className="h-3.5 w-3.5" />
-                  Cancelar
-                </Button>
-              </>
-            )}
-          </div>
-        </div>
-
-        <div className="p-4">
-          {generateSummary.isPending && !summaryText ? (
-            <div className="flex items-center gap-3 py-6 justify-center text-muted-foreground">
-              <Loader2 className="h-5 w-5 animate-spin text-primary" />
-              <span className="text-sm">Analisando exames e gerando resumo clínico…</span>
-            </div>
-          ) : isEditingSummary ? (
-            <Textarea
-              value={editBuffer}
-              onChange={(e) => setEditBuffer(e.target.value)}
-              className="min-h-[160px] text-sm leading-relaxed resize-y"
-              placeholder="Digite o resumo clínico aqui…"
-              autoFocus
-            />
-          ) : summaryText ? (
-            <div className="relative">
-              {generateSummary.isPending && (
-                <div className="absolute inset-0 bg-background/60 flex items-center justify-center rounded-lg z-10">
-                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                </div>
-              )}
-              <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{summaryText}</p>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
-              <Sparkles className="h-8 w-8 text-muted-foreground/40" />
-              <div>
-                <p className="text-sm font-medium text-foreground">Resumo Clínico por IA</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Clique em "Gerar com IA" para criar um resumo clínico interpretativo dos resultados.<br />
-                  O texto gerado pode ser editado antes de salvar ou exportar.
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Fontes RAG com feedback */}
-        {ragChunks.length > 0 && !isEditingSummary && (
-          <div className="border-t border-border/60">
-            <div className="px-4 py-3 flex items-center gap-2">
-              <BookOpen className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Fontes consultadas</span>
-              <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full">{ragChunks.length}</span>
-            </div>
-            <div className="px-4 pb-4 flex flex-col gap-3">
-              {ragChunks.map((chunk) => {
-                const vote = localVotes[chunk.id];
-                return (
-                  <div
-                    key={chunk.id}
-                    className="rounded-lg border border-border/70 bg-muted/30 p-3 flex flex-col gap-2"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[10px] font-semibold text-primary mb-1 truncate">{chunk.source}</p>
-                        <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{chunk.chunkText}</p>
-                      </div>
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <button
-                          onClick={() => handleVote(chunk.id, "up")}
-                          title="Este trecho foi útil"
-                          className={`p-1.5 rounded-md transition-colors ${
-                            vote === "up"
-                              ? "bg-green-100 text-green-700 border border-green-300"
-                              : "hover:bg-muted text-muted-foreground hover:text-foreground"
-                          }`}
-                        >
-                          <ThumbsUp className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleVote(chunk.id, "down")}
-                          title="Este trecho não foi útil"
-                          className={`p-1.5 rounded-md transition-colors ${
-                            vote === "down"
-                              ? "bg-red-100 text-red-700 border border-red-300"
-                              : "hover:bg-muted text-muted-foreground hover:text-foreground"
-                          }`}
-                        >
-                          <ThumbsDown className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </div>
-
       {/* Método */}
       {session.method && (
         <div className="bg-card border border-border rounded-xl p-4">
@@ -1026,43 +755,32 @@ export default function Analysis() {
             {[
               { key: "patientInfo" as const, label: "Dados do Paciente", desc: "Nome, data de nascimento, laboratório, etc." },
               { key: "results" as const, label: "Resultados dos Exames", desc: "Tabela completa com valores e referências" },
-              { key: "summary" as const, label: "Resumo Clínico", desc: "Interpretação gerada pela IA", disabled: !summaryText },
-            ].map(({ key, label, desc, disabled }) => (
+            ].map(({ key, label, desc }) => (
               <label
                 key={key}
                 htmlFor={`section-${key}`}
-                className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${
-                  disabled
-                    ? "opacity-40 cursor-not-allowed border-border"
-                    : "cursor-pointer " + (pdfSections[key]
+                className={`flex items-start gap-3 p-3 rounded-lg border transition-colors cursor-pointer ${
+                  pdfSections[key]
                     ? "border-primary/40 bg-primary/5"
-                    : "border-border hover:border-primary/30 hover:bg-muted/40")
+                    : "border-border hover:border-primary/30 hover:bg-muted/40"
                 }`}
               >
                 <Checkbox
                   id={`section-${key}`}
                   checked={pdfSections[key]}
-                  disabled={disabled}
                   onCheckedChange={(checked) => {
-                    if (!disabled) {
-                      setPdfSections((prev) => ({ ...prev, [key]: !!checked }));
-                    }
+                    setPdfSections((prev) => ({ ...prev, [key]: !!checked }));
                   }}
                   className="mt-0.5"
                 />
                 <div className="flex-1 min-w-0">
                   <Label
                     htmlFor={`section-${key}`}
-                    className={`text-sm font-medium leading-none cursor-pointer ${
-                      disabled ? "cursor-not-allowed" : ""
-                    }`}
+                    className="text-sm font-medium leading-none cursor-pointer"
                   >
                     {label}
                   </Label>
                   <p className="text-xs text-muted-foreground mt-1">{desc}</p>
-                  {key === "summary" && disabled && (
-                    <p className="text-xs text-amber-600 mt-1">Gere o resumo clínico primeiro</p>
-                  )}
                 </div>
               </label>
             ))}
@@ -1075,7 +793,7 @@ export default function Analysis() {
             <Button
               size="sm"
               onClick={() => exportPdf(pdfSections)}
-              disabled={!pdfSections.patientInfo && !pdfSections.results && !pdfSections.summary}
+              disabled={!pdfSections.patientInfo && !pdfSections.results}
               className="gap-1.5"
             >
               <Download className="h-4 w-4" />

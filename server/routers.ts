@@ -10,10 +10,7 @@ import {
   getExamsBySessionId,
   getSessionById,
   getSessionsByUserId,
-  saveClinicalSummary,
 } from "./db";
-import { invokeLLM } from "./_core/llm";
-import { buildRagContext, saveRagFeedback, getRagFeedbackForSession, KnowledgeChunk } from "./rag";
 import { documentsRouter } from "./routers/documents";
 import { imagingRouter } from "./routers/imaging";
 
@@ -154,115 +151,6 @@ const labRouter = router({
       }
       await deleteSession(input.sessionId, ctx.user.id);
       return { success: true };
-    }),
-  generateClinicalSummary: protectedProcedure
-    .input(z.object({ sessionId: z.number() }))
-    .mutation(async ({ ctx, input }) => {
-      const session = await getSessionById(input.sessionId);
-      if (!session || session.userId !== ctx.user.id) {
-        throw new Error("Sessão não encontrada.");
-      }
-      const examsData = await getExamsBySessionId(input.sessionId);
-      if (!examsData.length) {
-        return { summary: "Nenhum exame encontrado para gerar resumo clínico." };
-      }
-      // Montar lista de exames para o prompt
-      const examLines = examsData
-        .map((e) => {
-          const parts = [e.name];
-          if (e.result) parts.push(`resultado: ${e.result}${e.unit ? ` ${e.unit}` : ""}`);
-          if (e.referenceRange) parts.push(`referência: ${e.referenceRange}`);
-          if (e.status && e.status !== "normal") parts.push(`status: ${e.status}`);
-          return parts.join(" | ");
-        })
-        .join("\n");
-      const patientInfo = [
-        session.patientName ? `Paciente: ${session.patientName}` : "",
-        session.patientSex ? `Sexo: ${session.patientSex}` : "",
-        session.patientDob ? `Data de nascimento: ${session.patientDob}` : "",
-        session.collectionDate ? `Data da coleta: ${session.collectionDate}` : "",
-      ].filter(Boolean).join(" | ");
-      // Build RAG context from medical reference books
-      const examNames = examsData.map((e) => e.name).filter(Boolean) as string[];
-      const examValues = examsData.map((e) => ({
-        name: e.name ?? "",
-        value: e.result ?? "",
-        status: e.status ?? undefined,
-      }));
-      const { context: ragContext, chunks: ragChunks } = await buildRagContext(examNames, examValues);
-
-      const systemPrompt =
-        "Você é um assistente médico especializado em interpretação de exames laboratoriais. " +
-        "Gere um resumo clínico objetivo e profissional em português brasileiro, em 2 a 4 parágrafos. " +
-        "Destaque os achados mais relevantes (valores alterados, tendências), contextualize clinicamente e sugira atenção especial quando necessário. " +
-        "Não faça diagnósticos definitivos. Use linguagem técnica mas acessível ao médico solicitante. " +
-        (ragContext
-          ? "Use as referências de literatura médica fornecidas para embasar sua interpretação quando relevante. "
-          : "") +
-        "NÃO inclua títulos, cabeçalhos ou marcadores — apenas texto corrido em parágrafos.";
-
-      const userContent = ragContext
-        ? `${patientInfo}\n\nResultados dos exames:\n${examLines}\n\n${ragContext}`
-        : `${patientInfo}\n\nResultados dos exames:\n${examLines}`;
-
-      const response = await invokeLLM({
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userContent },
-        ],
-      });
-      const summary: string =
-        (response as any)?.choices?.[0]?.message?.content ?? "Não foi possível gerar o resumo clínico.";
-      // Salvar automaticamente no banco
-      await saveClinicalSummary(input.sessionId, summary);
-      // Return summary + RAG chunks for UI display
-      return {
-        summary,
-        ragChunks: ragChunks.map((c) => ({
-          id: c.id,
-          source: c.source,
-          chunkText: c.chunkText.substring(0, 400), // truncate for UI
-        })),
-      };
-    }),
-  saveClinicalSummary: protectedProcedure
-    .input(z.object({ sessionId: z.number(), summary: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      const session = await getSessionById(input.sessionId);
-      if (!session || session.userId !== ctx.user.id) {
-        throw new Error("Sessão não encontrada.");
-      }
-      await saveClinicalSummary(input.sessionId, input.summary);
-      return { success: true };
-    }),
-
-  // ─── RAG Feedback ─────────────────────────────────────────────────────────────
-
-  /** Submit a thumbs-up or thumbs-down vote on a RAG chunk */
-  submitRagFeedback: protectedProcedure
-    .input(
-      z.object({
-        chunkId: z.number(),
-        sessionId: z.number(),
-        vote: z.enum(["up", "down"]),
-      })
-    )
-    .mutation(async ({ ctx, input }) => {
-      const ok = await saveRagFeedback(
-        input.chunkId,
-        input.sessionId,
-        ctx.user.id,
-        input.vote
-      );
-      return { success: ok };
-    }),
-
-  /** Get all RAG feedback votes for a session (current user only) */
-  getRagFeedback: protectedProcedure
-    .input(z.object({ sessionId: z.number() }))
-    .query(async ({ ctx, input }) => {
-      const votes = await getRagFeedbackForSession(input.sessionId, ctx.user.id);
-      return { votes };
     }),
 });
 

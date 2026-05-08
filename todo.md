@@ -235,3 +235,23 @@
 - [x] Botão "Exportar PDF" no header detecta aba ativa e chama a função correta (lab ou imagem)
 - [x] PDF de imagem inclui: cabeçalho azul, dados do paciente, técnica, descrição, conclusão (destaque), observações, rodapé
 - [x] TypeScript: 0 erros | 60 testes passando
+
+## Feature: Remover módulo de IA dos exames laboratoriais (preparação para migração VPS)
+- [ ] Frontend Analysis.tsx: remover seção de Resumo Clínico (geração, edição, salvar)
+- [ ] Frontend Analysis.tsx: remover seção de Fontes RAG (chunks + botões 👍/👎)
+- [ ] Frontend Analysis.tsx: remover estados e hooks relacionados (summaryText, ragChunks, localVotes, etc.)
+- [ ] Frontend Analysis.tsx: simplificar modal de exportação PDF (remover opção "Resumo Clínico")
+- [ ] Frontend Analysis.tsx: simplificar exportPdf (remover seção summary do PDF)
+- [ ] Backend routers.ts: remover procedures generateClinicalSummary, saveClinicalSummary, submitRagFeedback, getRagFeedback
+- [ ] Backend: remover imports de invokeLLM e rag.ts do routers.ts
+- [ ] Manter: tabela de resultados, exportação PDF (lab e imagem), histórico, dual-tab
+
+## Remoção do módulo de IA dos exames laboratoriais (preparação para migração VPS)
+- [x] Remover bloco de Resumo Clínico e RAG do labContent (Analysis.tsx)
+- [x] Remover states e hooks de IA (summaryText, ragChunks, localVotes, etc.)
+- [x] Remover seção "Resumo Clínico" da função exportPdf
+- [x] Remover opção "Resumo Clínico" do modal de exportação PDF
+- [x] Remover procedures generateClinicalSummary, saveClinicalSummary, submitRagFeedback, getRagFeedback do routers.ts
+- [x] Remover imports de invokeLLM, rag.ts e saveClinicalSummary do routers.ts
+- [x] TypeScript: 0 erros | 60 testes passando
+- [x] Guia de migração VPS salvo em references/medsuite_migracao_vps.md
