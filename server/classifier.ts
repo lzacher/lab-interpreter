@@ -73,7 +73,7 @@ const MEDICAL_KEYWORDS = [
 /**
  * Render a single PDF page to JPEG buffer using pdfjs-dist + @napi-rs/canvas.
  * 100% Node.js — sem dependência de pdftoppm, ghostscript ou qualquer binário do sistema.
- * Funciona em produção (Manus hosting) e em desenvolvimento.
+ * Funciona em produção (VPS Hostinger) e em desenvolvimento.
  */
 async function renderPdfPageToJpeg(
   pdfBuffer: Buffer,
