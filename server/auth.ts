@@ -11,6 +11,7 @@ export const authConfig: AuthConfig = {
       clientSecret: ENV.googleClientSecret,
     }),
   ],
+  basePath: "/api/auth",
   secret: ENV.cookieSecret,
   trustHost: true,
   callbacks: {

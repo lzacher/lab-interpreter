@@ -34,7 +34,7 @@ async function startServer() {
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   // Auth.js — handles /api/auth/signin, /api/auth/callback/google, /api/auth/signout, etc.
-  app.use("/api/auth", authHandler);
+  app.use("/api/auth/*", authHandler);
   // tRPC API
   app.use(
     "/api/trpc",
