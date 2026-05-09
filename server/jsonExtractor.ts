@@ -83,6 +83,7 @@ export async function extractLabJson(
   patientName: string
 ): Promise<LabJson> {
   const response = await invokeLLM({
+    model: "gemini-2.0-flash",
     messages: [
       {
         role: "system" as const,
@@ -184,6 +185,7 @@ export async function extractImagingJson(
   patientName: string
 ): Promise<ImagingJson> {
   const response = await invokeLLM({
+    model: "gemini-2.0-flash",
     messages: [
       {
         role: "system" as const,

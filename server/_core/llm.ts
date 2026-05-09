@@ -266,6 +266,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   assertApiKey();
 
   const {
+    model,
     messages,
     tools,
     toolChoice,
@@ -277,7 +278,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   } = params;
 
   const payload: Record<string, unknown> = {
-    model: "gemini-2.0-flash",
+    model: model ?? "gemini-2.0-flash",
     messages: messages.map(normalizeMessage),
   };
 

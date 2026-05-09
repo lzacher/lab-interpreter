@@ -242,6 +242,7 @@ async function makePlaceholderThumbnail(pageNumber: number): Promise<string> {
 async function extractTextWithLLM(imageBase64: string): Promise<string> {
   try {
     const llmResponse = await invokeLLM({
+      model: "gemini-2.0-flash",
       messages: [
         {
           role: "system" as const,
