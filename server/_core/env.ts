@@ -1,10 +1,25 @@
 export const ENV = {
-  appId: process.env.VITE_APP_ID ?? "",
-  cookieSecret: process.env.JWT_SECRET ?? "",
+  // Database
   databaseUrl: process.env.DATABASE_URL ?? "",
-  oAuthServerUrl: process.env.OAUTH_SERVER_URL ?? "",
-  ownerOpenId: process.env.OWNER_OPEN_ID ?? "",
+  // Session
+  cookieSecret: process.env.JWT_SECRET ?? "",
+  // Runtime
   isProduction: process.env.NODE_ENV === "production",
-  forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
-  forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
+  // LLM (Google Gemini via OpenAI-compatible endpoint)
+  llmApiUrl: process.env.LLM_API_URL ?? "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+  llmApiKey: process.env.LLM_API_KEY ?? "",
+  // Cloudflare R2 Storage
+  cfAccountId: process.env.CF_ACCOUNT_ID ?? "",
+  r2AccessKeyId: process.env.R2_ACCESS_KEY_ID ?? "",
+  r2SecretAccessKey: process.env.R2_SECRET_ACCESS_KEY ?? "",
+  r2BucketName: process.env.R2_BUCKET_NAME ?? "lab-interpreter-docs",
+  // Google OAuth (Auth.js)
+  googleClientId: process.env.GOOGLE_CLIENT_ID ?? "",
+  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
+  // SMTP / Nodemailer
+  smtpHost: process.env.SMTP_HOST ?? "smtp.gmail.com",
+  smtpPort: process.env.SMTP_PORT ?? "587",
+  smtpUser: process.env.SMTP_USER ?? "",
+  smtpPass: process.env.SMTP_PASS ?? "",
+  ownerEmail: process.env.OWNER_EMAIL ?? "",
 };
