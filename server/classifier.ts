@@ -239,60 +239,6 @@ async function makePlaceholderThumbnail(pageNumber: number): Promise<string> {
 
 // ─── LLM Vision ──────────────────────────────────────────────────────────────
 
-async function classifyImageWithLLM(
-  imageBase64: string
-): Promise<{ classification: PageClassification; score: number }> {
-  try {
-    const llmResponse = await invokeLLM({
-      messages: [
-        {
-          role: "system" as const,
-          content:
-            'Você é um classificador de documentos médicos. Analise a imagem e responda APENAS com JSON: {"type": "laudo", "score": 85} ou {"type": "imagem", "score": 20}. "laudo" = documento com texto de relatório/laudo médico. "imagem" = imagem de diagnóstico (tomografia, ultrassom, raio-x, ressonância sem texto predominante). "score" = confiança 0-100.',
-        },
-        {
-          role: "user" as const,
-          content: [
-            {
-              type: "image_url" as const,
-              image_url: { url: `data:image/jpeg;base64,${imageBase64}`, detail: "low" as const },
-            },
-            { type: "text" as const, text: "Classifique este documento médico." },
-          ],
-        },
-      ],
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: "classification",
-          strict: true,
-          schema: {
-            type: "object",
-            properties: {
-              type: { type: "string", enum: ["laudo", "imagem"] },
-              score: { type: "number" },
-            },
-            required: ["type", "score"],
-            additionalProperties: false,
-          },
-        },
-      },
-    });
-
-    const raw = llmResponse?.choices?.[0]?.message?.content;
-    if (typeof raw === "string") {
-      const parsed = JSON.parse(raw);
-      return {
-        classification: parsed.type as PageClassification,
-        score: Math.min(100, Math.max(0, parsed.score ?? 50)),
-      };
-    }
-  } catch (err) {
-    console.error("[classifier] classifyImageWithLLM error:", err);
-  }
-  return { classification: "laudo", score: 60 };
-}
-
 async function extractTextWithLLM(imageBase64: string): Promise<string> {
   try {
     const llmResponse = await invokeLLM({
