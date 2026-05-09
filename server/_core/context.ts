@@ -1,6 +1,7 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import type { User } from "../../drizzle/schema";
-import { sdk } from "./sdk";
+import * as db from "../db";
+import { getSession } from "../auth";
 
 export type TrpcContext = {
   req: CreateExpressContextOptions["req"];
@@ -14,7 +15,29 @@ export async function createContext(
   let user: User | null = null;
 
   try {
-    user = await sdk.authenticateRequest(opts.req);
+    const session = await getSession(opts.req);
+    const openId = (session?.user as any)?.openId as string | undefined;
+
+    if (openId) {
+      const signedInAt = new Date();
+      let found = (await db.getUserByOpenId(openId)) ?? null;
+
+      if (!found) {
+        // First login: provision user record from Google profile
+        await db.upsertUser({
+          openId,
+          name: session!.user.name ?? null,
+          email: session!.user.email ?? null,
+          loginMethod: "google",
+          lastSignedIn: signedInAt,
+        });
+        found = (await db.getUserByOpenId(openId)) ?? null;
+      } else {
+        await db.upsertUser({ openId: found.openId, lastSignedIn: signedInAt });
+      }
+
+      user = found;
+    }
   } catch (error) {
     // Authentication is optional for public procedures.
     user = null;
