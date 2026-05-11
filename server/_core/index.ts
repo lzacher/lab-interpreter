@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
 import net from "net";
+import path from "path";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { appRouter } from "../routers";
 import { authHandler } from "../auth";
@@ -35,6 +36,8 @@ async function startServer() {
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  // Serve locally-stored uploads (fallback when R2 is not configured)
+  app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
   // Auth.js — handles /api/auth/signin, /api/auth/callback/google, /api/auth/signout, etc.
   app.use("/api/auth/*", authHandler);
   // tRPC API

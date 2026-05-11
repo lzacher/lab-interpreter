@@ -5,6 +5,8 @@ export const ENV = {
   cookieSecret: process.env.JWT_SECRET ?? "",
   // Runtime
   isProduction: process.env.NODE_ENV === "production",
+  // Public URL (used for local file storage URLs)
+  appUrl: process.env.APP_URL ?? "http://localhost:3000",
   // LLM (Google Gemini via OpenAI-compatible endpoint)
   llmApiUrl: process.env.LLM_API_URL ?? "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
   llmApiKey: process.env.LLM_API_KEY ?? "",
