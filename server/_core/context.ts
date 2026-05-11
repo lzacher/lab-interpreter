@@ -22,6 +22,7 @@ export async function createContext(
     if (openId) {
       const signedInAt = new Date();
       let found = (await db.getUserByOpenId(openId)) ?? null;
+      console.log("[context] getUserByOpenId:", found ? `id=${found.id}` : "null");
 
       if (!found) {
         // First login: provision user record from Google profile
@@ -38,6 +39,7 @@ export async function createContext(
       }
 
       user = found;
+      console.log("[context] final user:", user ? `id=${user.id}` : "null");
     }
   } catch (error) {
     // Authentication is optional for public procedures.
