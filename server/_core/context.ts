@@ -17,6 +17,7 @@ export async function createContext(
   try {
     const session = await getSession(opts.req);
     const openId = (session?.user as any)?.openId as string | undefined;
+    console.log("[context] session:", !!session, "openId:", openId, "path:", opts.req.path);
 
     if (openId) {
       const signedInAt = new Date();
