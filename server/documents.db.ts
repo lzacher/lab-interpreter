@@ -156,24 +156,24 @@ export async function clearAllUserHistory(userId: number) {
 
   // 1. Buscar todos os documentos do usuário com URLs para deletar arquivos físicos
   const userDocs = await db
-    .select({ id: documents.id, fileUrl: documents.fileUrl, thumbnailUrl: documents.thumbnailUrl })
+    .select({ id: documents.id, fileUrl: documents.fileUrl })
     .from(documents)
     .where(eq(documents.userId, userId));
   const docIds = userDocs.map((d) => d.id);
 
   if (docIds.length > 0) {
-    // 2. Deletar arquivos físicos dos documentos
-    for (const doc of userDocs) {
-      if (doc.fileUrl) await storageDelete(doc.fileUrl);
-      if (doc.thumbnailUrl) await storageDelete(doc.thumbnailUrl);
-    }
-    // 3. Deletar thumbnails das páginas
+    // 2. Deletar thumbnails e arquivos das páginas
     for (const docId of docIds) {
-      const pages = await db.select({ thumbnailUrl: documentPages.thumbnailUrl }).from(documentPages).where(eq(documentPages.documentId, docId));
+      const pages = await db.select({ thumbnailUrl: documentPages.thumbnailUrl, sourceFileUrl: documentPages.sourceFileUrl }).from(documentPages).where(eq(documentPages.documentId, docId));
       for (const page of pages) {
         if (page.thumbnailUrl) await storageDelete(page.thumbnailUrl);
+        if (page.sourceFileUrl) await storageDelete(page.sourceFileUrl);
       }
       await db.delete(documentPages).where(eq(documentPages.documentId, docId));
+    }
+    // 3. Deletar arquivos físicos dos documentos
+    for (const doc of userDocs) {
+      if (doc.fileUrl) await storageDelete(doc.fileUrl);
     }
     // 4. Deletar os documentos do banco
     await db.delete(documents).where(eq(documents.userId, userId));

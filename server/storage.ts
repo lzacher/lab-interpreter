@@ -38,11 +38,13 @@ export async function storageDelete(urlOrKey: string): Promise<void> {
       ? urlOrKey.split("/uploads/")[1]
       : normalizeKey(urlOrKey);
     const filePath = path.join(UPLOADS_DIR, key);
-    await fs.rm(filePath, { force: true });
+    try { fs.unlinkSync(filePath); } catch { /* arquivo não existe, ignorar */ }
     // Remove pasta pai se estiver vazia
     const dir = path.dirname(filePath);
-    const files = await fs.readdir(dir).catch(() => ["_"]);
-    if (files.length === 0) await fs.rmdir(dir).catch(() => {});
+    try {
+      const files = fs.readdirSync(dir);
+      if (files.length === 0) fs.rmdirSync(dir);
+    } catch { /* ignorar */ }
   } catch {
     // Ignora erros silenciosamente
   }
