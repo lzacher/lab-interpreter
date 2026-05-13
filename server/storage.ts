@@ -30,3 +30,20 @@ export async function storageGet(relKey: string): Promise<{ key: string; url: st
   return { key, url: localUrl(key) };
 }
 
+
+export async function storageDelete(urlOrKey: string): Promise<void> {
+  try {
+    // Extrai o key da URL ou usa diretamente
+    const key = urlOrKey.includes("/uploads/")
+      ? urlOrKey.split("/uploads/")[1]
+      : normalizeKey(urlOrKey);
+    const filePath = path.join(UPLOADS_DIR, key);
+    await fs.rm(filePath, { force: true });
+    // Remove pasta pai se estiver vazia
+    const dir = path.dirname(filePath);
+    const files = await fs.readdir(dir).catch(() => ["_"]);
+    if (files.length === 0) await fs.rmdir(dir).catch(() => {});
+  } catch {
+    // Ignora erros silenciosamente
+  }
+}

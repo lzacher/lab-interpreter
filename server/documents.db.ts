@@ -1,4 +1,5 @@
 import { eq, desc, and } from "drizzle-orm";
+import { storageDelete } from "./storage";
 import { getDb } from "./db";
 import {
   documents,
@@ -153,19 +154,28 @@ export async function clearAllUserHistory(userId: number) {
   const db = await getDb();
   if (!db) return { deletedDocuments: 0, deletedSessions: 0, deletedReports: 0, total: 0 };
 
-  // 1. Buscar todos os documentos do usuário (pipeline MedSuite)
+  // 1. Buscar todos os documentos do usuário com URLs para deletar arquivos físicos
   const userDocs = await db
-    .select({ id: documents.id })
+    .select({ id: documents.id, fileUrl: documents.fileUrl, thumbnailUrl: documents.thumbnailUrl })
     .from(documents)
     .where(eq(documents.userId, userId));
   const docIds = userDocs.map((d) => d.id);
 
   if (docIds.length > 0) {
-    // 2. Deletar document_pages de todos os documentos
+    // 2. Deletar arquivos físicos dos documentos
+    for (const doc of userDocs) {
+      if (doc.fileUrl) await storageDelete(doc.fileUrl);
+      if (doc.thumbnailUrl) await storageDelete(doc.thumbnailUrl);
+    }
+    // 3. Deletar thumbnails das páginas
     for (const docId of docIds) {
+      const pages = await db.select({ thumbnailUrl: documentPages.thumbnailUrl }).from(documentPages).where(eq(documentPages.documentId, docId));
+      for (const page of pages) {
+        if (page.thumbnailUrl) await storageDelete(page.thumbnailUrl);
+      }
       await db.delete(documentPages).where(eq(documentPages.documentId, docId));
     }
-    // 3. Deletar os documentos
+    // 4. Deletar os documentos do banco
     await db.delete(documents).where(eq(documents.userId, userId));
   }
 
