@@ -1,0 +1,83 @@
+version: "3.9"
+
+# ─── Rede externa do Traefik (já existente na VPS) ───────────────────────────
+# Execute antes: docker network create traefik-net (se ainda não existir)
+networks:
+  traefik-net:
+    external: true
+  lab-internal:
+    driver: bridge
+
+services:
+  # ─── Banco de Dados MySQL ──────────────────────────────────────────────────
+  lab-db:
+    image: mysql:8.0
+    container_name: lab-interpreter-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-lab_interpreter}
+      MYSQL_USER: ${MYSQL_USER:-labuser}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - lab-db-data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - lab-internal
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ─── Aplicação Node.js ────────────────────────────────────────────────────
+  lab-app:
+    image: ghcr.io/lzacher/lab-interpreter:latest
+    container_name: lab-interpreter-app
+    restart: unless-stopped
+    depends_on:
+      lab-db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: mysql://${MYSQL_USER:-labuser}:${MYSQL_PASSWORD}@lab-db:3306/${MYSQL_DATABASE:-lab_interpreter}
+      JWT_SECRET: ${JWT_SECRET}
+      # Autenticação local (substitui Manus OAuth)
+      AUTH_MODE: local
+      # Storage local (substitui Manus S3)
+      STORAGE_MODE: local
+      STORAGE_LOCAL_PATH: /app/uploads
+      # Ollama (IA local — para integração futura)
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2}
+    volumes:
+      - lab-uploads:/app/uploads
+    networks:
+      - traefik-net
+      - lab-internal
+    labels:
+      # ── Traefik ──────────────────────────────────────────────────────────
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-net"
+      # Roteamento HTTP → redireciona para HTTPS
+      - "traefik.http.routers.lab-http.rule=Host(`labinterpreter.drzacher.com`)"
+      - "traefik.http.routers.lab-http.entrypoints=web"
+      - "traefik.http.routers.lab-http.middlewares=redirect-to-https"
+      # Roteamento HTTPS
+      - "traefik.http.routers.lab-https.rule=Host(`labinterpreter.drzacher.com`)"
+      - "traefik.http.routers.lab-https.entrypoints=websecure"
+      - "traefik.http.routers.lab-https.tls=true"
+      - "traefik.http.routers.lab-https.tls.certresolver=letsencrypt"
+      # Serviço interno
+      - "traefik.http.services.lab-app.loadbalancer.server.port=3000"
+      # Middleware de redirecionamento HTTP→HTTPS
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true"
+
+volumes:
+  lab-db-data:
+    driver: local
+  lab-uploads:
+    driver: local

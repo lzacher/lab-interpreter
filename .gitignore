@@ -109,5 +109,8 @@ temp/
 # Webdev artifacts (checkpoint zips, migrations, etc.)
 .webdev/
 
+# Deploy — variáveis de ambiente de produção (nunca commitar)
+deploy/.env
+
 # Manus version file (auto-generated, not part of source)
 client/public/__manus__/version.json
