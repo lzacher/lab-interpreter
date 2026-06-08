@@ -250,6 +250,7 @@ deploy/
 ├── env.template         ← Template das variáveis de ambiente
 ├── .env                 ← Suas variáveis (NÃO commitar no Git)
 ├── init.sql             ← Script SQL de inicialização do banco
+├── entrypoint.sh        ← Aguarda MySQL, aplica migrações e inicia o servidor
 ├── deploy.sh            ← Script automatizado de deploy
 └── DEPLOY_GUIDE.md      ← Este guia
 ```
