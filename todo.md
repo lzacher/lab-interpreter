@@ -237,14 +237,14 @@
 - [x] TypeScript: 0 erros | 60 testes passando
 
 ## Feature: Remover módulo de IA dos exames laboratoriais (preparação para migração VPS)
-- [ ] Frontend Analysis.tsx: remover seção de Resumo Clínico (geração, edição, salvar)
-- [ ] Frontend Analysis.tsx: remover seção de Fontes RAG (chunks + botões 👍/👎)
-- [ ] Frontend Analysis.tsx: remover estados e hooks relacionados (summaryText, ragChunks, localVotes, etc.)
-- [ ] Frontend Analysis.tsx: simplificar modal de exportação PDF (remover opção "Resumo Clínico")
-- [ ] Frontend Analysis.tsx: simplificar exportPdf (remover seção summary do PDF)
-- [ ] Backend routers.ts: remover procedures generateClinicalSummary, saveClinicalSummary, submitRagFeedback, getRagFeedback
-- [ ] Backend: remover imports de invokeLLM e rag.ts do routers.ts
-- [ ] Manter: tabela de resultados, exportação PDF (lab e imagem), histórico, dual-tab
+- [x] Frontend Analysis.tsx: remover seção de Resumo Clínico (geração, edição, salvar)
+- [x] Frontend Analysis.tsx: remover seção de Fontes RAG (chunks + botões 👍/👎)
+- [x] Frontend Analysis.tsx: remover estados e hooks relacionados (summaryText, ragChunks, localVotes, etc.)
+- [x] Frontend Analysis.tsx: simplificar modal de exportação PDF (remover opção "Resumo Clínico")
+- [x] Frontend Analysis.tsx: simplificar exportPdf (remover seção summary do PDF)
+- [x] Backend routers.ts: remover procedures generateClinicalSummary, saveClinicalSummary, submitRagFeedback, getRagFeedback
+- [x] Backend: remover imports de invokeLLM e rag.ts do routers.ts
+- [x] Manter: tabela de resultados, exportação PDF (lab e imagem), histórico, dual-tab
 
 ## Remoção do módulo de IA dos exames laboratoriais (preparação para migração VPS)
 - [x] Remover bloco de Resumo Clínico e RAG do labContent (Analysis.tsx)
@@ -257,16 +257,16 @@
 - [x] Guia de migração VPS salvo em references/medsuite_migracao_vps.md
 
 ## Feature: Autenticação JWT Local (substituição do OAuth Manus)
-- [ ] Instalar dependências: bcryptjs, jsonwebtoken, @types/bcryptjs, @types/jsonwebtoken
-- [ ] Criar server/_core/localAuth.ts: helpers signToken, verifyToken, hashPassword, comparePassword
-- [ ] Atualizar drizzle/schema.ts: adicionar campo password_hash na tabela users
-- [ ] Aplicar migração SQL (ALTER TABLE users ADD COLUMN password_hash)
-- [ ] Atualizar server/db.ts: helpers getUserByEmail, createLocalUser
-- [ ] Criar server/routers/localAuth.ts: procedures login, register, logout, me
-- [ ] Atualizar server/_core/context.ts: verificar JWT do cookie em vez do Manus OAuth
-- [ ] Criar client/src/pages/Login.tsx: tela de login com email/senha
-- [ ] Criar client/src/pages/Register.tsx: tela de registro (primeiro uso)
-- [ ] Atualizar client/src/hooks/useAuth.ts: usar trpc.auth.me local
-- [ ] Atualizar client/src/App.tsx: rota /login, /register e proteção de rotas
-- [ ] Remover dependência do vite-plugin-manus-runtime do vite.config.ts
-- [ ] Escrever testes para as procedures de autenticação local
+- [x] Instalar dependências: bcryptjs, jsonwebtoken, @types/bcryptjs, @types/jsonwebtoken
+- [x] Criar server/_core/localAuth.ts: helpers signToken, verifyToken, hashPassword, comparePassword
+- [x] Atualizar drizzle/schema.ts: adicionar campo passwordHash na tabela users
+- [x] Aplicar migração SQL (passwordHash incluído no init.sql completo)
+- [x] Atualizar server/db.ts: helpers getUserByEmail, createLocalUser
+- [x] Criar server/routers/localAuth.ts: procedures login, register, logout, me
+- [x] Atualizar server/_core/context.ts: verificar JWT do cookie em vez do Manus OAuth
+- [x] Criar client/src/pages/Login.tsx: tela de login com email/senha
+- [x] Criar client/src/pages/Register.tsx: integrada na Login.tsx (modo toggle login/registro)
+- [x] Atualizar client/src/hooks/useAuth.ts: usar trpc.auth.me local
+- [x] Atualizar client/src/App.tsx: rota /login e proteção de rotas
+- [x] Remover dependência do vite-plugin-manus-runtime do vite.config.ts
+- [x] Escrever testes para as procedures de autenticação local (auth.logout.test.ts)
