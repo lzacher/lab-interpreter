@@ -10,6 +10,7 @@ import Processing from "./pages/Processing";
 import Analysis from "./pages/Analysis";
 import ImagingResult from "./pages/ImagingResult";
 import History from "./pages/History";
+import Login from "./pages/Login";
 
 function Router() {
   return (
@@ -25,6 +26,9 @@ function Router() {
 
       {/* Histórico unificado */}
       <Route path="/history" component={History} />
+
+      {/* Autenticação */}
+      <Route path="/login" component={Login} />
 
       {/* Fallback */}
       <Route path="/404" component={NotFound} />

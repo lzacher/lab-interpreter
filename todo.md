@@ -255,3 +255,18 @@
 - [x] Remover imports de invokeLLM, rag.ts e saveClinicalSummary do routers.ts
 - [x] TypeScript: 0 erros | 60 testes passando
 - [x] Guia de migração VPS salvo em references/medsuite_migracao_vps.md
+
+## Feature: Autenticação JWT Local (substituição do OAuth Manus)
+- [ ] Instalar dependências: bcryptjs, jsonwebtoken, @types/bcryptjs, @types/jsonwebtoken
+- [ ] Criar server/_core/localAuth.ts: helpers signToken, verifyToken, hashPassword, comparePassword
+- [ ] Atualizar drizzle/schema.ts: adicionar campo password_hash na tabela users
+- [ ] Aplicar migração SQL (ALTER TABLE users ADD COLUMN password_hash)
+- [ ] Atualizar server/db.ts: helpers getUserByEmail, createLocalUser
+- [ ] Criar server/routers/localAuth.ts: procedures login, register, logout, me
+- [ ] Atualizar server/_core/context.ts: verificar JWT do cookie em vez do Manus OAuth
+- [ ] Criar client/src/pages/Login.tsx: tela de login com email/senha
+- [ ] Criar client/src/pages/Register.tsx: tela de registro (primeiro uso)
+- [ ] Atualizar client/src/hooks/useAuth.ts: usar trpc.auth.me local
+- [ ] Atualizar client/src/App.tsx: rota /login, /register e proteção de rotas
+- [ ] Remover dependência do vite-plugin-manus-runtime do vite.config.ts
+- [ ] Escrever testes para as procedures de autenticação local

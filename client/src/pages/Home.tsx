@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { getLoginUrl } from "@/const";
+
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -261,7 +261,7 @@ export default function Home() {
             <Button
               size="sm"
               className="bg-blue-700 hover:bg-blue-800 text-white gap-1.5"
-              onClick={() => (window.location.href = getLoginUrl())}
+              onClick={() => (window.location.href = "/login")}
             >
               <LogIn className="h-4 w-4" />
               Entrar

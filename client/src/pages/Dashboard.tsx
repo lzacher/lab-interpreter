@@ -1,7 +1,7 @@
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { getLoginUrl } from "@/const";
+
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -39,7 +39,7 @@ export default function Dashboard() {
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
         <FlaskConical className="h-10 w-10 text-primary" />
         <p className="text-muted-foreground">Faça login para ver seu histórico.</p>
-        <Button onClick={() => (window.location.href = getLoginUrl())}>
+        <Button onClick={() => (window.location.href = "/login")}>
           <LogIn className="h-4 w-4 mr-1.5" />
           Entrar
         </Button>

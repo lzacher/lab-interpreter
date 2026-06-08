@@ -13,6 +13,7 @@ import {
 } from "./db";
 import { documentsRouter } from "./routers/documents";
 import { imagingRouter } from "./routers/imaging";
+import { localAuthRouter } from "./routers/localAuth";
 
 // ─── Helpers de parsing do JSON de laboratório ────────────────────────────────
 
@@ -158,14 +159,7 @@ const labRouter = router({
 
 export const appRouter = router({
   system: systemRouter,
-  auth: router({
-    me: publicProcedure.query((opts) => opts.ctx.user),
-    logout: publicProcedure.mutation(({ ctx }) => {
-      const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-      return { success: true } as const;
-    }),
-  }),
+  auth: localAuthRouter,
   lab: labRouter,
   documents: documentsRouter,
   imaging: imagingRouter,

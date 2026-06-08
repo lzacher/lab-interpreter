@@ -43,6 +43,30 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   } catch (error) { console.error("[Database] Failed to upsert user:", error); throw error; }
 }
 
+export async function getUserByEmail(email: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function createLocalUser(data: { email: string; name: string; passwordHash: string; role?: "user" | "admin" }): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  // openId local: prefixo "local:" + email
+  const openId = `local:${data.email}`;
+  const result = await db.insert(users).values({
+    openId,
+    email: data.email,
+    name: data.name,
+    passwordHash: data.passwordHash,
+    role: data.role ?? "user",
+    loginMethod: "local",
+    lastSignedIn: new Date(),
+  });
+  return (result[0] as any).insertId as number;
+}
+
 export async function getUserByOpenId(openId: string) {
   const db = await getDb();
   if (!db) return undefined;
