@@ -49,11 +49,15 @@ COPY --from=builder /app/client/dist ./client/dist
 COPY --from=builder /app/drizzle ./drizzle
 COPY --from=builder /app/shared ./shared
 
+# Copiar entrypoint
+COPY deploy/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 # Expor porta da aplicação
 EXPOSE 3000
 
 # Variável de ambiente de produção
 ENV NODE_ENV=production
 
-# Comando de inicialização
-CMD ["node", "dist/index.js"]
+# Usar entrypoint que aguarda o banco e aplica migrações
+ENTRYPOINT ["/entrypoint.sh"]
