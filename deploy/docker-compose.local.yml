@@ -1,0 +1,78 @@
+version: "3.9"
+
+# ─── docker-compose para TESTES LOCAIS (sem Traefik) ─────────────────────────
+# Acesso direto via: http://187.77.55.169:<PORTA_LIVRE>
+# Use a porta livre identificada pelo script diagnostico_vps.sh (seção 3)
+#
+# Uso:
+#   docker compose -f docker-compose.local.yml --env-file .env up -d
+#   docker compose -f docker-compose.local.yml --env-file .env down
+#
+# Para definir a porta, adicione no .env:
+#   LOCAL_PORT=3001   (ou outra porta livre)
+
+networks:
+  lab-local:
+    driver: bridge
+
+services:
+  # ─── Banco de Dados MySQL ────────────────────────────────────────────────
+  lab-db:
+    image: mysql:8.0
+    container_name: lab-interpreter-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-lab_interpreter}
+      MYSQL_USER: ${MYSQL_USER:-labuser}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - lab-db-data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - lab-local
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ─── Aplicação Node.js ──────────────────────────────────────────────────
+  lab-app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: lab-interpreter-app
+    restart: unless-stopped
+    depends_on:
+      lab-db:
+        condition: service_healthy
+    # ⚠️ ALTERE LOCAL_PORT no .env para uma porta LIVRE (ex: 3001, 4000, 8082)
+    # Acesso: http://187.77.55.169:${LOCAL_PORT}
+    ports:
+      - "${LOCAL_PORT:-3001}:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: mysql://${MYSQL_USER:-labuser}:${MYSQL_PASSWORD}@lab-db:3306/${MYSQL_DATABASE:-lab_interpreter}
+      JWT_SECRET: ${JWT_SECRET}
+      AUTH_MODE: local
+      STORAGE_MODE: local
+      STORAGE_LOCAL_PATH: /app/uploads
+      # Ollama via IP do host (para acessar o Ollama já rodando na VPS)
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host-gateway:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2}
+    extra_hosts:
+      # Permite que o contêiner acesse serviços rodando no host (ex: Ollama)
+      - "host-gateway:host-gateway"
+    volumes:
+      - lab-uploads:/app/uploads
+    networks:
+      - lab-local
+
+volumes:
+  lab-db-data:
+    driver: local
+  lab-uploads:
+    driver: local
