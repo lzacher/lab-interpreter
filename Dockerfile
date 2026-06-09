@@ -40,8 +40,8 @@ RUN npm install -g pnpm && \
 COPY package.json pnpm-lock.yaml ./
 COPY patches/ ./patches/
 
-# Instalar apenas dependências de produção
-RUN pnpm install --frozen-lockfile --prod
+# Instalar todas as dependências (vite é necessário em runtime pelo import estático no dist/index.js)
+RUN pnpm install --frozen-lockfile
 
 # Copiar artefatos do build
 # O Vite gera o frontend em dist/public/ e o backend em dist/index.js
