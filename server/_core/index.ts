@@ -9,6 +9,7 @@ import { registerAuthRoutes } from "../restAuth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { getStorageDir, isLocalStorage } from "../storage";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -37,6 +38,10 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   // Cookie parser — necessário para req.cookies funcionar
   app.use(cookieParser());
+  // Local file storage — serve uploaded files from disk
+  if (isLocalStorage()) {
+    app.use("/storage", express.static(getStorageDir()));
+  }
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
   // REST auth endpoints (login/logout) — bypass tRPC mutation bug

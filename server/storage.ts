@@ -1,7 +1,69 @@
-// Preconfigured storage helpers for Manus WebDev templates
-// Uses the Biz-provided storage proxy (Authorization: Bearer <token>)
+/**
+ * Storage helpers — Local filesystem storage for VPS deployment
+ * Falls back to Manus S3 proxy when BUILT_IN_FORGE_API_URL is available.
+ * 
+ * Files are stored in /app/storage (Docker volume) and served via Express static.
+ */
 
+import * as fs from "fs";
+import * as path from "path";
 import { ENV } from './_core/env';
+
+// ─── Configuration ───────────────────────────────────────────────────────────
+
+const USE_LOCAL_STORAGE = !ENV.forgeApiUrl || !ENV.forgeApiKey;
+
+// Local storage directory (mapped to Docker volume in production)
+const STORAGE_DIR = process.env.STORAGE_LOCAL_PATH || process.env.LOCAL_STORAGE_PATH || path.resolve(process.cwd(), "storage-data");
+
+// Base URL for serving files (set via env or auto-detect)
+const BASE_URL = process.env.STORAGE_BASE_URL || "";
+
+// ─── Local Storage Implementation ───────────────────────────────────────────
+
+function ensureDir(dirPath: string) {
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true });
+  }
+}
+
+function getLocalFilePath(relKey: string): string {
+  const normalized = relKey.replace(/^\/+/, "");
+  const fullPath = path.join(STORAGE_DIR, normalized);
+  ensureDir(path.dirname(fullPath));
+  return fullPath;
+}
+
+function getPublicUrl(relKey: string): string {
+  const normalized = relKey.replace(/^\/+/, "");
+  return `/storage/${normalized}`;
+}
+
+async function localPut(
+  relKey: string,
+  data: Buffer | Uint8Array | string,
+  _contentType = "application/octet-stream"
+): Promise<{ key: string; url: string }> {
+  const key = relKey.replace(/^\/+/, "");
+  const filePath = getLocalFilePath(key);
+  
+  if (typeof data === "string") {
+    fs.writeFileSync(filePath, data, "utf-8");
+  } else {
+    fs.writeFileSync(filePath, data);
+  }
+
+  const url = getPublicUrl(key);
+  return { key, url };
+}
+
+async function localGet(relKey: string): Promise<{ key: string; url: string }> {
+  const key = relKey.replace(/^\/+/, "");
+  const url = getPublicUrl(key);
+  return { key, url };
+}
+
+// ─── S3 Proxy Implementation (Manus WebDev) ─────────────────────────────────
 
 type StorageConfig = { baseUrl: string; apiKey: string };
 
@@ -18,29 +80,6 @@ function getStorageConfig(): StorageConfig {
   return { baseUrl: baseUrl.replace(/\/+$/, ""), apiKey };
 }
 
-function buildUploadUrl(baseUrl: string, relKey: string): URL {
-  const url = new URL("v1/storage/upload", ensureTrailingSlash(baseUrl));
-  url.searchParams.set("path", normalizeKey(relKey));
-  return url;
-}
-
-async function buildDownloadUrl(
-  baseUrl: string,
-  relKey: string,
-  apiKey: string
-): Promise<string> {
-  const downloadApiUrl = new URL(
-    "v1/storage/downloadUrl",
-    ensureTrailingSlash(baseUrl)
-  );
-  downloadApiUrl.searchParams.set("path", normalizeKey(relKey));
-  const response = await fetch(downloadApiUrl, {
-    method: "GET",
-    headers: buildAuthHeaders(apiKey),
-  });
-  return (await response.json()).url;
-}
-
 function ensureTrailingSlash(value: string): string {
   return value.endsWith("/") ? value : `${value}/`;
 }
@@ -49,37 +88,31 @@ function normalizeKey(relKey: string): string {
   return relKey.replace(/^\/+/, "");
 }
 
-function toFormData(
-  data: Buffer | Uint8Array | string,
-  contentType: string,
-  fileName: string
-): FormData {
-  const blob =
-    typeof data === "string"
-      ? new Blob([data], { type: contentType })
-      : new Blob([data as any], { type: contentType });
-  const form = new FormData();
-  form.append("file", blob, fileName || "file");
-  return form;
-}
-
 function buildAuthHeaders(apiKey: string): HeadersInit {
   return { Authorization: `Bearer ${apiKey}` };
 }
 
-export async function storagePut(
+async function s3Put(
   relKey: string,
   data: Buffer | Uint8Array | string,
   contentType = "application/octet-stream"
 ): Promise<{ key: string; url: string }> {
   const { baseUrl, apiKey } = getStorageConfig();
   const key = normalizeKey(relKey);
-  const uploadUrl = buildUploadUrl(baseUrl, key);
-  const formData = toFormData(data, contentType, key.split("/").pop() ?? key);
+  const uploadUrl = new URL("v1/storage/upload", ensureTrailingSlash(baseUrl));
+  uploadUrl.searchParams.set("path", key);
+
+  const blob =
+    typeof data === "string"
+      ? new Blob([data], { type: contentType })
+      : new Blob([data as any], { type: contentType });
+  const form = new FormData();
+  form.append("file", blob, key.split("/").pop() ?? key);
+
   const response = await fetch(uploadUrl, {
     method: "POST",
     headers: buildAuthHeaders(apiKey),
-    body: formData,
+    body: form,
   });
 
   if (!response.ok) {
@@ -92,11 +125,45 @@ export async function storagePut(
   return { key, url };
 }
 
-export async function storageGet(relKey: string): Promise<{ key: string; url: string; }> {
+async function s3Get(relKey: string): Promise<{ key: string; url: string }> {
   const { baseUrl, apiKey } = getStorageConfig();
   const key = normalizeKey(relKey);
-  return {
-    key,
-    url: await buildDownloadUrl(baseUrl, key, apiKey),
-  };
+  const downloadApiUrl = new URL("v1/storage/downloadUrl", ensureTrailingSlash(baseUrl));
+  downloadApiUrl.searchParams.set("path", key);
+  const response = await fetch(downloadApiUrl, {
+    method: "GET",
+    headers: buildAuthHeaders(apiKey),
+  });
+  return { key, url: (await response.json()).url };
+}
+
+// ─── Exported API ────────────────────────────────────────────────────────────
+
+export async function storagePut(
+  relKey: string,
+  data: Buffer | Uint8Array | string,
+  contentType = "application/octet-stream"
+): Promise<{ key: string; url: string }> {
+  if (USE_LOCAL_STORAGE) {
+    return localPut(relKey, data, contentType);
+  }
+  return s3Put(relKey, data, contentType);
+}
+
+export async function storageGet(relKey: string): Promise<{ key: string; url: string }> {
+  if (USE_LOCAL_STORAGE) {
+    return localGet(relKey);
+  }
+  return s3Get(relKey);
+}
+
+// ─── Express Middleware for Serving Local Files ──────────────────────────────
+
+export function getStorageDir(): string {
+  ensureDir(STORAGE_DIR);
+  return STORAGE_DIR;
+}
+
+export function isLocalStorage(): boolean {
+  return USE_LOCAL_STORAGE;
 }
