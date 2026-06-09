@@ -44,29 +44,6 @@ services:
       retries: 5
       start_period: 30s
 
-  # ─── MinIO Storage (dedicado ao lab-interpreter) ───────────────────────────
-  lab-minio:
-    image: minio/minio:latest
-    container_name: lab-interpreter-minio
-    restart: unless-stopped
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-labadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-    volumes:
-      - lab-minio-data:/data
-    networks:
-      - lab-net
-    # Para acesso temporário ao console MinIO durante setup, descomente:
-    # ports:
-    #   - "9001:9001"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
-
   # ─── Aplicação Node.js ─────────────────────────────────────────────────────
   lab-app:
     build:
@@ -77,8 +54,6 @@ services:
     restart: unless-stopped
     depends_on:
       lab-db:
-        condition: service_healthy
-      lab-minio:
         condition: service_healthy
     # Porta NÃO exposta para o host em produção — Traefik roteia via labels
     # Para debug temporário, descomente a linha abaixo:
@@ -91,14 +66,9 @@ services:
       DATABASE_URL: mysql://${MYSQL_USER:-labuser}:${MYSQL_PASSWORD}@lab-db:3306/${MYSQL_DATABASE:-lab_interpreter}
       # Segurança
       JWT_SECRET: ${JWT_SECRET}
-      # Storage MinIO local (substitui Manus S3)
-      STORAGE_MODE: s3
-      S3_ENDPOINT: http://lab-minio:9000
-      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-labadmin}
-      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
-      S3_BUCKET: ${MINIO_BUCKET:-lab-interpreter-files}
-      S3_REGION: us-east-1
-      S3_FORCE_PATH_STYLE: "true"
+      # Storage local em disco (sem MinIO)
+      STORAGE_MODE: local
+      STORAGE_LOCAL_PATH: /app/uploads
       # Ollama — conectado via: docker network connect ollama-hd0v_default lab-interpreter-app
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama-hd0v-ollama-1:11434}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2}
@@ -129,8 +99,6 @@ services:
 
 volumes:
   lab-db-data:
-    driver: local
-  lab-minio-data:
     driver: local
   lab-uploads:
     driver: local
