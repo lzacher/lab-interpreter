@@ -2,23 +2,22 @@ version: "3.9"
 
 # ─── Lab Interpreter — Docker Compose para Produção na VPS Hostinger ─────────
 #
-# IMPORTANTE: O Traefik desta VPS usa rede "host" (não bridge nomeada).
-# A integração é feita APENAS via labels Docker — não é necessário
-# criar ou conectar a nenhuma rede "traefik-net".
+# O Traefik usa a rede externa "traefik-net" para rotear requisições.
+# O lab-app precisa estar nessa rede para ser alcançado pelo Traefik.
 #
 # Uso:
 #   docker compose -f docker-compose.yml --env-file .env up -d --build
 #   docker compose -f docker-compose.yml --env-file .env logs -f lab-app
 #   docker compose -f docker-compose.yml --env-file .env down
-#
-# Após subir, conectar ao Ollama já existente na VPS:
-#   docker network connect ollama-hd0v_default lab-interpreter-app
 
 networks:
   # Rede interna isolada para comunicação entre os contêineres do lab-interpreter
   lab-net:
     name: lab-interpreter_lab-net
     driver: bridge
+  # Rede externa do Traefik — já existe, apenas referenciada aqui
+  traefik-net:
+    external: true
 
 services:
   # ─── Banco de Dados MySQL (dedicado, isolado) ──────────────────────────────
@@ -36,7 +35,6 @@ services:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
       - lab-net
-    # Porta NÃO exposta para o host — acesso apenas interno
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
       interval: 10s
@@ -55,34 +53,23 @@ services:
     depends_on:
       lab-db:
         condition: service_healthy
-    # Porta NÃO exposta para o host em produção — Traefik roteia via labels
-    # Para debug temporário, descomente a linha abaixo:
-    # ports:
-    #   - "3001:3000"
     environment:
       NODE_ENV: production
       PORT: 3000
-      # Banco de dados
       DATABASE_URL: mysql://${MYSQL_USER:-labuser}:${MYSQL_PASSWORD}@lab-db:3306/${MYSQL_DATABASE:-lab_interpreter}
-      # Segurança
       JWT_SECRET: ${JWT_SECRET}
-      # Storage local em disco (sem MinIO)
       STORAGE_MODE: local
       STORAGE_LOCAL_PATH: /app/uploads
-      # Ollama — conectado via: docker network connect ollama-hd0v_default lab-interpreter-app
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama-hd0v-ollama-1:11434}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2}
     volumes:
       - lab-uploads:/app/uploads
     networks:
       - lab-net
+      - traefik-net
     labels:
-      # ─── Traefik Labels ────────────────────────────────────────────────────
-      # O Traefik desta VPS usa rede "host" e detecta contêineres via socket Docker.
-      # Ele acessa este contêiner pelo IP da rede lab-net automaticamente.
       - "traefik.enable=true"
-      # Indica qual rede usar para alcançar este contêiner
-      - "traefik.docker.network=lab-interpreter_lab-net"
+      - "traefik.docker.network=traefik-net"
       # Router HTTP → redireciona para HTTPS
       - "traefik.http.routers.lab-http.rule=Host(`${DOMAIN:-labinterpreter.drzacher.com}`)"
       - "traefik.http.routers.lab-http.entrypoints=web"
