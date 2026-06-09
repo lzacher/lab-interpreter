@@ -44,8 +44,8 @@ COPY patches/ ./patches/
 RUN pnpm install --frozen-lockfile --prod
 
 # Copiar artefatos do build
+# O Vite gera o frontend em dist/public/ e o backend em dist/index.js
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/client/dist ./client/dist
 COPY --from=builder /app/drizzle ./drizzle
 COPY --from=builder /app/shared ./shared
 
