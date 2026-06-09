@@ -10,36 +10,38 @@ import { toast } from "sonner";
 
 export default function Login() {
   const [, navigate] = useLocation();
-  const [mode, setMode] = useState<"login" | "register">("login");
   const [showPassword, setShowPassword] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [form, setForm] = useState({ email: "", password: "" });
+  const [isLoading, setIsLoading] = useState(false);
 
   const utils = trpc.useUtils();
 
-  const loginMutation = trpc.auth.login.useMutation({
-    onSuccess: () => {
-      utils.auth.me.invalidate();
-      navigate("/");
-    },
-    onError: (err) => toast.error(err.message),
-  });
-
-  const registerMutation = trpc.auth.register.useMutation({
-    onSuccess: () => {
-      utils.auth.me.invalidate();
-      navigate("/");
-    },
-    onError: (err) => toast.error(err.message),
-  });
-
-  const isLoading = loginMutation.isPending || registerMutation.isPending;
-
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (mode === "login") {
-      loginMutation.mutate({ email: form.email, password: form.password });
-    } else {
-      registerMutation.mutate({ name: form.name, email: form.email, password: form.password });
+    setIsLoading(true);
+
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email: form.email, password: form.password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(data.error || "Erro ao fazer login");
+        return;
+      }
+
+      // Invalidar cache do auth.me para refletir o login
+      await utils.auth.me.invalidate();
+      navigate("/");
+    } catch {
+      toast.error("Erro de conexão. Tente novamente.");
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -58,33 +60,14 @@ export default function Login() {
         {/* Card */}
         <Card className="shadow-lg border-slate-200">
           <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-xl">
-              {mode === "login" ? "Entrar na conta" : "Criar conta"}
-            </CardTitle>
+            <CardTitle className="text-xl">Entrar na conta</CardTitle>
             <CardDescription>
-              {mode === "login"
-                ? "Insira seu e-mail e senha para acessar o sistema"
-                : "Preencha os dados para criar sua conta"}
+              Insira seu e-mail e senha para acessar o sistema
             </CardDescription>
           </CardHeader>
 
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
-              {mode === "register" && (
-                <div className="space-y-1.5">
-                  <Label htmlFor="name">Nome completo</Label>
-                  <Input
-                    id="name"
-                    type="text"
-                    placeholder="Dr. João Silva"
-                    value={form.name}
-                    onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                    required
-                    disabled={isLoading}
-                  />
-                </div>
-              )}
-
               <div className="space-y-1.5">
                 <Label htmlFor="email">E-mail</Label>
                 <Input
@@ -105,13 +88,13 @@ export default function Login() {
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Mínimo 6 caracteres"
+                    placeholder="Sua senha"
                     value={form.password}
                     onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
                     required
                     minLength={6}
                     disabled={isLoading}
-                    autoComplete={mode === "login" ? "current-password" : "new-password"}
+                    autoComplete="current-password"
                     className="pr-10"
                   />
                   <button
@@ -129,34 +112,8 @@ export default function Login() {
             <CardFooter className="flex flex-col gap-3 pt-2">
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {mode === "login" ? "Entrar" : "Criar conta"}
+                Entrar
               </Button>
-
-              <p className="text-sm text-slate-500 text-center">
-                {mode === "login" ? (
-                  <>
-                    Não tem conta?{" "}
-                    <button
-                      type="button"
-                      onClick={() => setMode("register")}
-                      className="text-blue-600 hover:underline font-medium"
-                    >
-                      Criar conta
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    Já tem conta?{" "}
-                    <button
-                      type="button"
-                      onClick={() => setMode("login")}
-                      className="text-blue-600 hover:underline font-medium"
-                    >
-                      Entrar
-                    </button>
-                  </>
-                )}
-              </p>
             </CardFooter>
           </form>
         </Card>
