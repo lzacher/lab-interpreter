@@ -1,9 +1,7 @@
 /**
  * context.ts — Contexto tRPC
  *
- * Suporta dois modos de autenticação:
- *   1. JWT local (AUTH_MODE=local ou OAUTH_SERVER_URL não configurado) — VPS independente
- *   2. Manus OAuth (padrão quando rodando na plataforma Manus)
+ * Autenticação JWT local (VPS independente).
  */
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import type { User } from "../../drizzle/schema";
@@ -28,36 +26,13 @@ async function authenticateLocalJwt(
   return user ?? null;
 }
 
-async function authenticateManus(
-  req: CreateExpressContextOptions["req"]
-): Promise<User | null> {
-  try {
-    const { sdk } = await import("./sdk");
-    return await sdk.authenticateRequest(req);
-  } catch {
-    return null;
-  }
-}
-
 export async function createContext(
   opts: CreateExpressContextOptions
 ): Promise<TrpcContext> {
   let user: User | null = null;
 
-  // Modo local: JWT próprio (VPS sem Manus)
-  const isLocalMode =
-    process.env.AUTH_MODE === "local" || !process.env.OAUTH_SERVER_URL;
-
   try {
-    if (isLocalMode) {
-      user = await authenticateLocalJwt(opts.req);
-    } else {
-      // Plataforma Manus: OAuth primeiro, fallback para JWT local
-      user = await authenticateManus(opts.req);
-      if (!user) {
-        user = await authenticateLocalJwt(opts.req);
-      }
-    }
+    user = await authenticateLocalJwt(opts.req);
   } catch {
     user = null;
   }

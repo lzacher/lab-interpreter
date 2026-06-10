@@ -146,17 +146,3 @@ export const imagingReports = mysqlTable("imaging_reports", {
 export type ImagingReport = typeof imagingReports.$inferSelect;
 export type InsertImagingReport = typeof imagingReports.$inferInsert;
 
-// ─── RAG Feedback ─────────────────────────────────────────────────────────────
-
-/** Feedback do usuário sobre trechos de literatura médica usados no RAG */
-export const ragFeedback = mysqlTable("rag_feedback", {
-  id: int("id").autoincrement().primaryKey(),
-  chunkId: int("chunk_id").notNull(),
-  sessionId: int("session_id").notNull(),
-  userId: int("user_id").notNull(),
-  vote: mysqlEnum("vote", ["up", "down"]).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
-export type RagFeedback = typeof ragFeedback.$inferSelect;
-export type InsertRagFeedback = typeof ragFeedback.$inferInsert;

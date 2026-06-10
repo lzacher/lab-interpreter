@@ -1,7 +1,6 @@
 import { z } from "zod";
-import { COOKIE_NAME } from "@shared/const";
-import { getSessionCookieOptions } from "./_core/cookies";
-import { systemRouter } from "./_core/systemRouter";
+
+
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import {
   createExamSession,
@@ -158,7 +157,6 @@ const labRouter = router({
 // ─── App Router ───────────────────────────────────────────────────────────────
 
 export const appRouter = router({
-  system: systemRouter,
   auth: localAuthRouter,
   lab: labRouter,
   documents: documentsRouter,

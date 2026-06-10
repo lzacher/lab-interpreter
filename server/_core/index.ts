@@ -4,7 +4,7 @@ import cookieParser from "cookie-parser";
 import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { registerOAuthRoutes } from "./oauth";
+
 import { registerAuthRoutes } from "../restAuth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
@@ -42,8 +42,7 @@ async function startServer() {
   if (isLocalStorage()) {
     app.use("/storage", express.static(getStorageDir()));
   }
-  // OAuth callback under /api/oauth/callback
-  registerOAuthRoutes(app);
+
   // REST auth endpoints (login/logout) — bypass tRPC mutation bug
   registerAuthRoutes(app);
   // tRPC API
@@ -70,7 +69,6 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
-    console.log("[RAG] Using keyword-based search (no external dependencies)");
   });
 }
 
