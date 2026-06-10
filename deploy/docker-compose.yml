@@ -60,7 +60,8 @@ services:
       STORAGE_MODE: local
       STORAGE_LOCAL_PATH: /app/uploads
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama-hd0v-ollama-1:11434}
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:7b}
+      OLLAMA_VISION_MODEL: ${OLLAMA_VISION_MODEL:-minicpm-v}
     volumes:
       - lab-uploads:/app/uploads
     networks:
