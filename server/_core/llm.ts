@@ -120,17 +120,201 @@ function messagesContainImages(messages: Message[]): boolean {
           return true;
         }
       }
+    } else if (typeof content !== "string" && content.type === "image_url") {
+      return true;
     }
   }
   return false;
 }
 
-// ─── Helper: check if Forge API is available ────────────────────────────────
+// ─── Helper: check available backends ──────────────────────────────────────
 function isForgeAvailable(): boolean {
   return !!(ENV.forgeApiKey && ENV.forgeApiKey.trim().length > 0);
 }
 
-// ─── Forge API (Manus platform) ─────────────────────────────────────────────
+function isGeminiAvailable(): boolean {
+  return !!(ENV.geminiApiKey && ENV.geminiApiKey.trim().length > 0);
+}
+
+// ─── Gemini API (Google AI Studio) ─────────────────────────────────────────
+
+interface GeminiPart {
+  text?: string;
+  inlineData?: { mimeType: string; data: string };
+}
+
+interface GeminiContent {
+  role: "user" | "model";
+  parts: GeminiPart[];
+}
+
+function convertMessagesForGemini(messages: Message[]): { contents: GeminiContent[]; systemInstruction?: string } {
+  let systemInstruction: string | undefined;
+  const contents: GeminiContent[] = [];
+
+  for (const msg of messages) {
+    const content = msg.content;
+    const parts: GeminiPart[] = [];
+
+    if (msg.role === "system") {
+      // Gemini handles system instructions separately
+      if (typeof content === "string") {
+        systemInstruction = (systemInstruction ? systemInstruction + "\n" : "") + content;
+      } else if (Array.isArray(content)) {
+        for (const part of content) {
+          if (typeof part === "string") {
+            systemInstruction = (systemInstruction ? systemInstruction + "\n" : "") + part;
+          } else if (part.type === "text") {
+            systemInstruction = (systemInstruction ? systemInstruction + "\n" : "") + part.text;
+          }
+        }
+      }
+      continue;
+    }
+
+    if (typeof content === "string") {
+      parts.push({ text: content });
+    } else if (Array.isArray(content)) {
+      for (const part of content) {
+        if (typeof part === "string") {
+          parts.push({ text: part });
+        } else if (part.type === "text") {
+          parts.push({ text: part.text });
+        } else if (part.type === "image_url") {
+          const url = part.image_url.url;
+          if (url.startsWith("data:")) {
+            // Extract mime type and base64 data
+            const match = url.match(/^data:([^;]+);base64,(.+)$/);
+            if (match) {
+              parts.push({ inlineData: { mimeType: match[1], data: match[2] } });
+            }
+          }
+        }
+      }
+    } else {
+      if (content.type === "text") {
+        parts.push({ text: content.text });
+      } else if (content.type === "image_url") {
+        const url = content.image_url.url;
+        if (url.startsWith("data:")) {
+          const match = url.match(/^data:([^;]+);base64,(.+)$/);
+          if (match) {
+            parts.push({ inlineData: { mimeType: match[1], data: match[2] } });
+          }
+        }
+      }
+    }
+
+    if (parts.length > 0) {
+      const role = msg.role === "assistant" ? "model" : "user";
+      contents.push({ role, parts });
+    }
+  }
+
+  return { contents, systemInstruction };
+}
+
+function buildGeminiResponseSchema(params: InvokeParams): Record<string, unknown> | undefined {
+  const format = params.responseFormat || params.response_format;
+  if (!format) return undefined;
+
+  if (format.type === "json_object") {
+    return { responseMimeType: "application/json" };
+  }
+
+  if (format.type === "json_schema" && format.json_schema?.schema) {
+    return {
+      responseMimeType: "application/json",
+      responseSchema: format.json_schema.schema,
+    };
+  }
+
+  return undefined;
+}
+
+async function invokeGemini(params: InvokeParams): Promise<InvokeResult> {
+  const { messages } = params;
+  const { contents, systemInstruction } = convertMessagesForGemini(messages);
+  const model = "gemini-2.0-flash";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${ENV.geminiApiKey}`;
+
+  const body: Record<string, unknown> = { contents };
+
+  if (systemInstruction) {
+    body.systemInstruction = { parts: [{ text: systemInstruction }] };
+  }
+
+  // Generation config
+  const generationConfig: Record<string, unknown> = {
+    maxOutputTokens: params.maxTokens || params.max_tokens || 8192,
+    temperature: 0.1,
+  };
+
+  const responseSchema = buildGeminiResponseSchema(params);
+  if (responseSchema) {
+    Object.assign(generationConfig, responseSchema);
+  }
+
+  body.generationConfig = generationConfig;
+
+  console.log(`[LLM] Using Gemini model: ${model}`);
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Gemini invoke failed: ${response.status} ${response.statusText} – ${errorText}`);
+  }
+
+  const result = (await response.json()) as {
+    candidates?: Array<{
+      content?: { parts?: Array<{ text?: string }> };
+      finishReason?: string;
+    }>;
+    usageMetadata?: {
+      promptTokenCount?: number;
+      candidatesTokenCount?: number;
+      totalTokenCount?: number;
+    };
+  };
+
+  const candidate = result.candidates?.[0];
+  const text = candidate?.content?.parts?.map(p => p.text ?? "").join("") ?? "";
+
+  let content = text;
+  // Clean up markdown code blocks if JSON was requested
+  const format = params.responseFormat || params.response_format;
+  if (format && (format.type === "json_object" || format.type === "json_schema")) {
+    content = cleanJsonResponse(content);
+  }
+
+  return {
+    id: `gemini-${Date.now()}`,
+    created: Math.floor(Date.now() / 1000),
+    model,
+    choices: [
+      {
+        index: 0,
+        message: {
+          role: "assistant",
+          content,
+        },
+        finish_reason: candidate?.finishReason ?? "stop",
+      },
+    ],
+    usage: {
+      prompt_tokens: result.usageMetadata?.promptTokenCount ?? 0,
+      completion_tokens: result.usageMetadata?.candidatesTokenCount ?? 0,
+      total_tokens: result.usageMetadata?.totalTokenCount ?? 0,
+    },
+  };
+}
+
+// ─── Forge API (Manus platform — only used in Manus sandbox) ───────────────
 
 const ensureArray = (
   value: MessageContent | MessageContent[]
@@ -266,7 +450,7 @@ async function invokeForge(params: InvokeParams): Promise<InvokeResult> {
   return (await response.json()) as InvokeResult;
 }
 
-// ─── Ollama Local ───────────────────────────────────────────────────────────
+// ─── Ollama Local (text-only tasks) ────────────────────────────────────────
 
 interface OllamaMessage {
   role: string;
@@ -293,19 +477,16 @@ function convertMessagesForOllama(messages: Message[]): { ollamaMessages: Ollama
           textParts.push(part.text);
         } else if (part.type === "image_url") {
           hasImages = true;
-          // Extract base64 data from data URL
           const url = part.image_url.url;
           if (url.startsWith("data:")) {
             const base64Data = url.split(",")[1];
             if (base64Data) images.push(base64Data);
           } else {
-            // External URL - pass as-is (Ollama may not support this)
             images.push(url);
           }
         }
       }
     } else {
-      // Single content object
       if (content.type === "text") {
         textParts.push(content.text);
       } else if (content.type === "image_url") {
@@ -395,7 +576,6 @@ async function invokeOllama(params: InvokeParams): Promise<InvokeResult> {
     prompt_eval_count?: number;
   };
 
-  // Convert Ollama response to InvokeResult format
   let content = ollamaResult.message?.content ?? "";
 
   // Clean up markdown code blocks if JSON was requested
@@ -426,8 +606,9 @@ async function invokeOllama(params: InvokeParams): Promise<InvokeResult> {
   };
 }
 
+// ─── Utility ───────────────────────────────────────────────────────────────
+
 function cleanJsonResponse(content: string): string {
-  // Remove markdown code blocks
   let cleaned = content.trim();
   if (cleaned.startsWith("```json")) {
     cleaned = cleaned.slice(7);
@@ -441,12 +622,28 @@ function cleanJsonResponse(content: string): string {
 }
 
 // ─── Public API ─────────────────────────────────────────────────────────────
+//
+// Priority order:
+// 1. Forge API (Manus sandbox only — has BUILT_IN_FORGE_API_KEY)
+// 2. Gemini API (VPS — has GEMINI_API_KEY) — used for ALL tasks (vision + text)
+// 3. Ollama local (fallback if no API keys available)
+//
+// Strategy on VPS:
+// - Gemini handles both vision (classification, OCR) and text (JSON extraction)
+// - Ollama is kept as fallback only
+//
 
 export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
+  // 1. Manus sandbox
   if (isForgeAvailable()) {
     return invokeForge(params);
   }
 
-  // Fallback to Ollama
+  // 2. Gemini API (primary for VPS)
+  if (isGeminiAvailable()) {
+    return invokeGemini(params);
+  }
+
+  // 3. Ollama fallback
   return invokeOllama(params);
 }
