@@ -157,7 +157,28 @@ export async function storageGet(relKey: string): Promise<{ key: string; url: st
   return s3Get(relKey);
 }
 
-// ─── Express Middleware for Serving Local Files ──────────────────────────────
+/**
+ * Resolve a storage URL (either relative like /storage/... or absolute https://...)
+ * to a fetchable URL. For local storage, reads the file directly from disk.
+ * For S3, the URL is already absolute and fetchable.
+ */
+export async function storageReadBuffer(fileUrl: string): Promise<Buffer> {
+  // Local storage: /storage/path/to/file -> read from disk
+  if (fileUrl.startsWith("/storage/")) {
+    const relPath = fileUrl.replace(/^\/storage\//, "");
+    const filePath = path.join(STORAGE_DIR, relPath);
+    if (!fs.existsSync(filePath)) {
+      throw new Error(`File not found in local storage: ${filePath}`);
+    }
+    return fs.readFileSync(filePath) as Buffer;
+  }
+  // Absolute URL (S3 or external): use fetch
+  const res = await fetch(fileUrl);
+  if (!res.ok) throw new Error(`Failed to fetch file: HTTP ${res.status}`);
+  return Buffer.from(await res.arrayBuffer());
+}
+
+// ─── Express Middleware for Serving Local Files ──────────────────────────────────
 
 export function getStorageDir(): string {
   ensureDir(STORAGE_DIR);

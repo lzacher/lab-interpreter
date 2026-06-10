@@ -9,7 +9,7 @@ import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
 import { protectedProcedure, router } from "../_core/trpc";
-import { storagePut } from "../storage";
+import { storagePut, storageReadBuffer } from "../storage";
 import { analyzeDocument, extractTextFromPages } from "../classifier";
 import {
   createDocument,
@@ -93,9 +93,7 @@ export const documentsRouter = router({
       const tmpFile = path.join(tmpDir, `doc-${input.documentId}-${nanoid()}.${doc.fileType}`);
 
       try {
-        const res = await fetch(doc.fileUrl);
-        if (!res.ok) throw new Error("Falha ao baixar arquivo do armazenamento.");
-        const buffer = Buffer.from(await res.arrayBuffer());
+        const buffer = await storageReadBuffer(doc.fileUrl);
         fs.writeFileSync(tmpFile, buffer);
 
         const result = await analyzeDocument(tmpFile);
@@ -233,9 +231,7 @@ export const documentsRouter = router({
             const tmpGroupFile = path.join(tmpDir, `doc-ocr-${input.documentId}-${nanoid()}.${fileExt}`);
             tmpFilesCreated.push(tmpGroupFile);
 
-            const res = await fetch(fileUrl);
-            if (!res.ok) throw new Error(`Falha ao baixar arquivo: ${fileUrl}`);
-            const buffer = Buffer.from(await res.arrayBuffer());
+            const buffer = await storageReadBuffer(fileUrl);
             fs.writeFileSync(tmpGroupFile, buffer);
 
             // Para imagens JPEG, cada arquivo tem apenas 1 página — mapear pageNumber=1 do OCR para o pageNumber global
@@ -261,9 +257,7 @@ export const documentsRouter = router({
           }
         } else {
           // ── Arquivo único: comportamento original ──
-          const res = await fetch(doc.fileUrl);
-          if (!res.ok) throw new Error("Falha ao baixar arquivo.");
-          const buffer = Buffer.from(await res.arrayBuffer());
+          const buffer = await storageReadBuffer(doc.fileUrl);
           fs.writeFileSync(tmpFile, buffer);
           tmpFilesCreated.push(tmpFile);
 
@@ -564,9 +558,7 @@ export const documentsRouter = router({
             `doc-multi-${input.documentId}-${fileIndex}-${nanoid()}.${uf.fileType}`
           );
           try {
-            const res = await fetch(uf.fileUrl);
-            if (!res.ok) throw new Error(`Falha ao baixar: ${uf.fileName}`);
-            const buffer = Buffer.from(await res.arrayBuffer());
+            const buffer = await storageReadBuffer(uf.fileUrl);
             fs.writeFileSync(tmpFile, buffer);
             const result = await analyzeDocument(tmpFile);
             for (const page of result.pages) {
