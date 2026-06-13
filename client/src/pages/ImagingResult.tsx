@@ -199,6 +199,18 @@ export default function ImagingResult() {
       </header>
 
       <main className="flex-1 max-w-4xl mx-auto w-full px-6 py-8 space-y-6">
+        {/* Banner de segurança: exclusão automática de arquivos */}
+        <div className="flex items-start gap-3 bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm text-green-800">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mt-0.5 shrink-0 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          <span>
+            <strong>Arquivos originais excluídos com segurança.</strong>{" "}
+            O PDF enviado e as imagens das páginas foram removidos automaticamente após o processamento. Apenas os dados estruturados extraídos estão armazenados.
+          </span>
+        </div>
+
         {/* Patient Info */}
         <div className="bg-white border border-slate-200 rounded-xl p-6">
           <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-4">
