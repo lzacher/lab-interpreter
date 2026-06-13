@@ -214,6 +214,29 @@ function convertMessagesForGemini(messages: Message[]): { contents: GeminiConten
   return { contents, systemInstruction };
 }
 
+/**
+ * Recursively strip 'additionalProperties' and 'strict' from a JSON schema object.
+ * Gemini API does not support these fields and returns 400 if they are present.
+ */
+function stripUnsupportedSchemaFields(schema: Record<string, unknown>): Record<string, unknown> {
+  const cleaned: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(schema)) {
+    if (key === "additionalProperties" || key === "strict") continue;
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      cleaned[key] = stripUnsupportedSchemaFields(value as Record<string, unknown>);
+    } else if (Array.isArray(value)) {
+      cleaned[key] = value.map(item =>
+        item && typeof item === "object" && !Array.isArray(item)
+          ? stripUnsupportedSchemaFields(item as Record<string, unknown>)
+          : item
+      );
+    } else {
+      cleaned[key] = value;
+    }
+  }
+  return cleaned;
+}
+
 function buildGeminiResponseSchema(params: InvokeParams): Record<string, unknown> | undefined {
   const format = params.responseFormat || params.response_format;
   if (!format) return undefined;
@@ -223,9 +246,10 @@ function buildGeminiResponseSchema(params: InvokeParams): Record<string, unknown
   }
 
   if (format.type === "json_schema" && format.json_schema?.schema) {
+    const cleanedSchema = stripUnsupportedSchemaFields(format.json_schema.schema as Record<string, unknown>);
     return {
       responseMimeType: "application/json",
-      responseSchema: format.json_schema.schema,
+      responseSchema: cleanedSchema,
     };
   }
 
