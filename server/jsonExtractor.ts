@@ -54,6 +54,46 @@ export type ExtractedResult =
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 /**
+ * Extrai e parseia JSON de forma robusta a partir de uma resposta LLM.
+ * Lida com:
+ *  - Blocos ```json ... ``` ou ``` ... ```
+ *  - Comentários de linha (// ...) e bloco (/* ... *\/)
+ *  - Trailing commas antes de } ou ]
+ *  - Texto extra antes/depois do JSON
+ */
+function robustJsonParse(raw: string): unknown {
+  if (!raw || typeof raw !== "string") throw new Error("Resposta LLM vazia ou inválida.");
+
+  // 1. Tentar parse direto primeiro (caso já seja JSON limpo)
+  try { return JSON.parse(raw); } catch { /* continua */ }
+
+  // 2. Extrair bloco de código markdown ```json ... ``` ou ``` ... ```
+  const codeBlockMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (codeBlockMatch) {
+    try { return JSON.parse(codeBlockMatch[1].trim()); } catch { /* continua */ }
+  }
+
+  // 3. Extrair o primeiro objeto JSON { ... } ou array [ ... ] do texto
+  const jsonMatch = raw.match(/([\[{][\s\S]*[\]}])/);
+  if (jsonMatch) {
+    let candidate = jsonMatch[1].trim();
+
+    // 4. Remover comentários de linha: // ... até fim de linha
+    candidate = candidate.replace(/\/\/[^\n]*/g, "");
+
+    // 5. Remover comentários de bloco: /* ... */
+    candidate = candidate.replace(/\/\*[\s\S]*?\*\//g, "");
+
+    // 6. Remover trailing commas antes de } ou ]
+    candidate = candidate.replace(/,\s*([}\]])/g, "$1");
+
+    try { return JSON.parse(candidate); } catch { /* continua */ }
+  }
+
+  throw new Error(`Não foi possível extrair JSON válido da resposta LLM. Início: ${raw.substring(0, 200)}`);
+}
+
+/**
  * Normaliza o campo status retornado pelo LLM para uma palavra curta.
  * O LLM pode retornar frases longas como "Dentro do intervalo de referência";
  * esta função mapeia para o valor canônico mais próximo.
@@ -159,7 +199,7 @@ Retorne APENAS o JSON, sem comentários.`,
   const raw = response?.choices?.[0]?.message?.content;
   if (!raw) throw new Error("LLM não retornou conteúdo para extração de laboratório.");
 
-  const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+  const parsed = (typeof raw === "string" ? robustJsonParse(raw) : raw) as any;
 
   // Normalizar status de cada exame para garantir que seja curto
   if (parsed.exames && Array.isArray(parsed.exames)) {
@@ -238,7 +278,7 @@ Retorne APENAS o JSON, sem comentários.`,
   const raw = response?.choices?.[0]?.message?.content;
   if (!raw) throw new Error("LLM não retornou conteúdo para extração de imagem.");
 
-  const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+  const parsed = (typeof raw === "string" ? robustJsonParse(raw) : raw) as any;
 
   if (!parsed.paciente_nome && patientName) {
     parsed.paciente_nome = patientName;
