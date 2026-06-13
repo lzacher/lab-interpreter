@@ -259,7 +259,7 @@ function buildGeminiResponseSchema(params: InvokeParams): Record<string, unknown
 async function invokeGemini(params: InvokeParams): Promise<InvokeResult> {
   const { messages } = params;
   const { contents, systemInstruction } = convertMessagesForGemini(messages);
-  const model = "gemini-2.0-flash";
+  const model = "gemini-2.5-flash";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${ENV.geminiApiKey}`;
 
   const body: Record<string, unknown> = { contents };
