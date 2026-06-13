@@ -188,3 +188,26 @@ export function getStorageDir(): string {
 export function isLocalStorage(): boolean {
   return USE_LOCAL_STORAGE;
 }
+
+/**
+ * Deleta um arquivo do storage (local ou S3).
+ * Falha silenciosa — não lança erro se o arquivo não existir.
+ */
+export async function storageDelete(relKey: string): Promise<void> {
+  const key = relKey.replace(/^\/+/, "");
+  if (USE_LOCAL_STORAGE) {
+    const filePath = path.join(STORAGE_DIR, key);
+    try { fs.unlinkSync(filePath); } catch { /* ignora se não existir */ }
+    return;
+  }
+  // S3: chamar endpoint de delete
+  try {
+    const { baseUrl, apiKey } = getStorageConfig();
+    const deleteUrl = new URL("v1/storage/delete", ensureTrailingSlash(baseUrl));
+    deleteUrl.searchParams.set("path", key);
+    await fetch(deleteUrl, {
+      method: "DELETE",
+      headers: buildAuthHeaders(apiKey),
+    });
+  } catch { /* falha silenciosa */ }
+}

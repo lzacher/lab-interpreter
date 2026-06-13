@@ -129,6 +129,15 @@ export async function extractLabJson(
         content: `Você é um especialista em extração de dados de laudos laboratoriais brasileiros.
 Extraia TODOS os exames do texto fornecido e retorne um JSON estruturado.
 Para cada exame, extraia: nome, resultado, unidade, valor_referencia e status.
+
+REGRA CRÍTICA para o campo valor_referencia:
+Muitos laudos listam intervalos de referência para múltiplos grupos (sexo, faixa etária, etc.).
+Você DEVE identificar o sexo e a data de nascimento do paciente no texto e selecionar APENAS
+o intervalo de referência correspondente ao perfil do paciente.
+Exemplo: se o paciente é homem adulto e o laudo mostra "Feminino: 6-82 ng/dL | Masculino adulto: 280-800 ng/dL",
+retorne APENAS "280 - 800 ng/dL" no campo valor_referencia.
+NUNCA copie toda a tabela de referência — retorne apenas o intervalo aplicável ao paciente.
+
 REGRA IMPORTANTE para o campo status: use APENAS uma destas palavras exatas: "normal", "elevado", "alto", "baixo", "alterado", "critico" ou "" (vazio).
 NUNCA escreva frases longas no status. Apenas UMA PALAVRA do conjunto acima.
 Se um campo não estiver disponível, use string vazia "".

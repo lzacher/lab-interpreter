@@ -9,7 +9,7 @@ import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
 import { protectedProcedure, router } from "../_core/trpc";
-import { storagePut, storageReadBuffer } from "../storage";
+import { storagePut, storageReadBuffer, storageDelete } from "../storage";
 import { analyzeDocument, extractTextFromPages } from "../classifier";
 import {
   createDocument,
@@ -420,6 +420,28 @@ export const documentsRouter = router({
         }
 
         await updateDocumentStatus(input.documentId, "done");
+
+        // ── Limpeza automática: deletar arquivos de upload após processamento ──
+        // Os dados estruturados já foram salvos no banco; os arquivos físicos
+        // não precisam mais ser armazenados por questões de privacidade.
+        setImmediate(async () => {
+          try {
+            // Deletar arquivo principal do documento
+            if (doc.fileKey) {
+              await storageDelete(doc.fileKey);
+            }
+            // Deletar thumbnails de todas as páginas
+            const allPages = await getPagesByDocument(input.documentId);
+            for (const page of allPages) {
+              if (page.thumbnailKey) {
+                await storageDelete(page.thumbnailKey);
+              }
+              if (page.sourceFileKey && page.sourceFileKey !== doc.fileKey) {
+                await storageDelete(page.sourceFileKey);
+              }
+            }
+          } catch { /* falha silenciosa — não impacta o resultado */ }
+        });
 
         // Compatibilidade retroativa: manter resultType/resultId para o primeiro resultado
         const primaryResult = results[0];
